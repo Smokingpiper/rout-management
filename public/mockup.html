@@ -241,6 +241,36 @@
     color: var(--text-3); font-size: 12.5px; background: var(--surface);
   }
 
+  .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+  .photo-thumb {
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer;
+    background: var(--surface);
+  }
+  .photo-thumb .thumb-visual {
+    height: 130px; display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+  }
+  .photo-thumb .thumb-caption {
+    padding: 8px 10px; font-size: 12px; color: var(--text-2); background: var(--bg-2);
+    border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 6px;
+  }
+  .photo-thumb .thumb-caption .dummy-tag { color: var(--text-3); font-size: 10.5px; }
+
+  .lightbox-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(10,14,26,.7); align-items: center; justify-content: center; padding: 24px;
+  }
+  .lightbox-overlay.open { display: flex; }
+  .lightbox-box {
+    background: var(--bg-2); border-radius: 14px; padding: 18px; max-width: 420px; width: 100%;
+    text-align: center;
+  }
+  .lightbox-img {
+    height: 280px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-size: 64px;
+  }
+  .lightbox-caption { margin-top: 10px; font-size: 13px; color: var(--text-2); }
+
   .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; gap: 10px; }
   .toggle-row:last-child { border-bottom: none; }
 
@@ -504,9 +534,16 @@
         <input type="number" placeholder="例：142.5">
         <div class="hint">ごみ収集車の計量器に表示された値をそのまま入力する</div>
       </div>
-      <div class="field">
-        <label>計量器の写真（任意・自動でavif圧縮して保存）</label>
-        <div class="photo-drop">📷 タップして撮影 / アップロード</div>
+      <div class="grid-2">
+        <div class="field">
+          <label>日報の写真（任意・自動でavif圧縮して保存）</label>
+          <div class="photo-drop">📄 タップして撮影 / アップロード</div>
+        </div>
+        <div class="field">
+          <label>回収レシートの写真（任意・自動でavif圧縮して保存）</label>
+          <div class="photo-drop">🧾 タップして撮影 / アップロード</div>
+          <div class="hint">ごみ収集車の計量器が出力するレシート</div>
+        </div>
       </div>
       <div class="field"><label>メモ</label><textarea rows="2" placeholder="特記事項など"></textarea></div>
     </div>
@@ -617,9 +654,19 @@
           </p>
         </div>
       </div>
+      <div class="card-title" style="margin-top:18px">添付写真</div>
+      <div class="photo-grid" id="detailPhotos"></div>
       <div class="grid-2" style="margin-top:14px">
         <button class="btn btn-outline btn-block">差し戻す</button>
         <button class="btn btn-primary btn-block">日報を承認する</button>
+      </div>
+    </div>
+
+    <div class="lightbox-overlay no-print" id="photoLightbox">
+      <div class="lightbox-box">
+        <div class="lightbox-img" id="lightboxImg"></div>
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+        <button class="btn btn-outline btn-sm" id="lightboxClose" style="margin-top:12px">閉じる</button>
       </div>
     </div>
   </section>
@@ -1115,23 +1162,46 @@
       badge: '総重量 142.5kg・古紙',
       badgeClass: 'ok',
       note: '14スポット中14件、GPS軌跡から通過を確認済み。要注意スポット1件のアラート確認タップも記録あり。異常な逸脱は検出されていません。',
-      map: '<svg viewBox="0 0 400 200"><path d="M20,180 C60,140 90,150 120,110 C150,70 220,90 260,50 C290,25 320,30 350,15" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="20" cy="180" r="5" fill="var(--accent)"/><circle cx="350" cy="15" r="5" fill="var(--accent)"/></svg>'
+      map: '<svg viewBox="0 0 400 200"><path d="M20,180 C60,140 90,150 120,110 C150,70 220,90 260,50 C290,25 320,30 350,15" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="20" cy="180" r="5" fill="var(--accent)"/><circle cx="350" cy="15" r="5" fill="var(--accent)"/></svg>',
+      photos: [
+        { type: 'report', icon: '📄', label: '日報', filename: '日報_0923_杉並第3.avif', color: 'var(--accent-2-dim)' },
+        { type: 'receipt', icon: '🧾', label: '回収レシート', filename: 'レシート_0923_杉並第3.avif', color: 'var(--accent-dim)' }
+      ]
     },
     r2: {
       title: '中野第1ルート — 09/23 承認',
       badge: '総重量 98.0kg・ビン',
       badgeClass: 'ok',
       note: '10スポット中10件、GPS軌跡から通過を確認済み。異常な逸脱は検出されていません。',
-      map: '<svg viewBox="0 0 400 200"><path d="M30,170 C70,150 100,120 140,100 C180,80 240,90 280,60 C310,40 330,35 360,20" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="30" cy="170" r="5" fill="var(--accent)"/><circle cx="360" cy="20" r="5" fill="var(--accent)"/></svg>'
+      map: '<svg viewBox="0 0 400 200"><path d="M30,170 C70,150 100,120 140,100 C180,80 240,90 280,60 C310,40 330,35 360,20" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="30" cy="170" r="5" fill="var(--accent)"/><circle cx="360" cy="20" r="5" fill="var(--accent)"/></svg>',
+      photos: [
+        { type: 'report', icon: '📄', label: '日報', filename: '日報_0923_中野第1.avif', color: 'var(--accent-2-dim)' },
+        { type: 'receipt', icon: '🧾', label: '回収レシート', filename: 'レシート_0923_中野第1.avif', color: 'var(--accent-dim)' }
+      ]
     },
     r3: {
       title: '杉並第3ルート — 09/22 承認',
       badge: '総重量 135.0kg・古紙',
       badgeClass: 'warn',
       note: '14スポット中13件、GPS軌跡から通過を確認済み。1件、軌跡から外れたスポットがあるため要確認。',
-      map: '<svg viewBox="0 0 400 200"><path d="M20,180 C60,150 90,155 120,120 C150,90 190,100 220,70 C250,40 300,55 350,15" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="20" cy="180" r="5" fill="var(--accent)"/><circle cx="270" cy="110" r="5" fill="var(--danger)"/><circle cx="350" cy="15" r="5" fill="var(--accent)"/></svg>'
+      map: '<svg viewBox="0 0 400 200"><path d="M20,180 C60,150 90,155 120,120 C150,90 190,100 220,70 C250,40 300,55 350,15" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="20" cy="180" r="5" fill="var(--accent)"/><circle cx="270" cy="110" r="5" fill="var(--danger)"/><circle cx="350" cy="15" r="5" fill="var(--accent)"/></svg>',
+      photos: [
+        { type: 'report', icon: '📄', label: '日報', filename: '日報_0922_杉並第3.avif', color: 'var(--accent-2-dim)' },
+        { type: 'receipt', icon: '🧾', label: '回収レシート', filename: 'レシート_0922_杉並第3.avif', color: 'var(--accent-dim)' }
+      ]
     }
   };
+
+  const photoLightbox = document.getElementById('photoLightbox');
+  function openLightbox(photo) {
+    const img = document.getElementById('lightboxImg');
+    img.style.background = photo.color;
+    img.textContent = photo.icon;
+    document.getElementById('lightboxCaption').textContent = `${photo.label}（ダミー画像） ・ ${photo.filename}`;
+    photoLightbox.classList.add('open');
+  }
+  document.getElementById('lightboxClose').addEventListener('click', () => photoLightbox.classList.remove('open'));
+  photoLightbox.addEventListener('click', (e) => { if (e.target === photoLightbox) photoLightbox.classList.remove('open'); });
 
   function selectReport(id) {
     const data = reportData[id];
@@ -1142,6 +1212,16 @@
     badge.className = 'pill ' + data.badgeClass;
     document.getElementById('detailTrackNote').textContent = data.note;
     document.getElementById('detailMapWrap').innerHTML = data.map;
+    const photosWrap = document.getElementById('detailPhotos');
+    photosWrap.innerHTML = data.photos.map((p, i) => `
+      <div class="photo-thumb" data-photo-index="${i}">
+        <div class="thumb-visual" style="background:${p.color}">${p.icon}</div>
+        <div class="thumb-caption"><span>${p.label}</span><span class="dummy-tag">ダミー</span></div>
+      </div>
+    `).join('');
+    photosWrap.querySelectorAll('.photo-thumb').forEach(el => {
+      el.addEventListener('click', () => openLightbox(data.photos[Number(el.dataset.photoIndex)]));
+    });
     document.querySelectorAll('#reportRows tr').forEach(row => {
       row.classList.toggle('selected-report', row.dataset.reportId === id);
     });
