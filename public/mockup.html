@@ -258,6 +258,45 @@
     main { padding: 20px 16px; max-width: 100%; }
     .grid-2, .grid-3 { grid-template-columns: 1fr; }
   }
+
+  /* Tutorial */
+  .help-btn {
+    margin-top: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--nav-active);
+    border: 1px solid var(--nav-hover);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+  }
+  .tutorial-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(10, 14, 26, .55);
+    backdrop-filter: blur(2px);
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .tutorial-overlay.open { display: flex; }
+  .tutorial-modal {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px 28px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  .tutorial-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .tutorial-title { font-family: 'Sora', sans-serif; font-size: 19px; font-weight: 700; margin-bottom: 10px; }
+  .tutorial-body { font-size: 13.5px; color: var(--text-2); line-height: 1.75; min-height: 90px; }
+  .tutorial-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; }
+  .tutorial-dots { display: flex; gap: 6px; }
+  .tutorial-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--surface-2); }
+  .tutorial-dot.active { background: var(--accent); width: 16px; border-radius: 4px; }
+  .tutorial-actions { display: flex; gap: 8px; }
+  .tutorial-skip { font-size: 12px; color: var(--text-3); cursor: pointer; align-self: center; }
 </style>
 </head>
 <body>
@@ -282,7 +321,24 @@
   <div class="nav-item" data-screen="s10"><span class="num">10</span>ユーザー招待管理</div>
 
   <div class="theme-toggle" id="themeToggle">🌓 ライト/ダーク切替</div>
+  <div class="help-btn" id="helpBtn">❔ 使い方を見る</div>
 </nav>
+
+<div class="tutorial-overlay" id="tutorialOverlay">
+  <div class="tutorial-modal">
+    <div class="tutorial-eyebrow" id="tutorialEyebrow">使い方ガイド 1 / 5</div>
+    <div class="tutorial-title" id="tutorialTitle"></div>
+    <div class="tutorial-body" id="tutorialBody"></div>
+    <div class="tutorial-footer">
+      <div class="tutorial-dots" id="tutorialDots"></div>
+      <div class="tutorial-actions">
+        <span class="tutorial-skip" id="tutorialSkip">スキップ</span>
+        <button class="btn btn-outline btn-sm" id="tutorialBack">戻る</button>
+        <button class="btn btn-primary btn-sm" id="tutorialNext">次へ</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <main>
 
@@ -641,6 +697,87 @@
     const current = root.getAttribute('data-theme');
     root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
   });
+
+  // Tutorial
+  const tutorialSteps = [
+    {
+      title: '👋 ようこそ',
+      body: 'これは「ゴミ収支管理アプリ」の画面モックアップです。実際のデータ連携はまだなく、操作感を確認するためのクリッカブルな叩き台です。全10画面をこの後ざっとご案内します。',
+      screen: null
+    },
+    {
+      title: '左のメニューで画面を切り替え',
+      body: '左側のサイドバーから確認したい画面をクリックしてください。「ドライバー向け」「会社管理者向け」「協会管理者向け」の3つのロールに分かれています。',
+      screen: 's1'
+    },
+    {
+      title: 'ドライバー向け画面のポイント',
+      body: '回収記録はスポットごとではなく、1日のルートの最後にまとめて1回入力します。総重量はごみ収集車の計量器の表示値をそのまま入力し、ゴミ種別も1日につき1種類です。「軌跡マップ」では自分が実際に通ったGPS経路を、計画スポットと重ねて確認できます。',
+      screen: 's3'
+    },
+    {
+      title: '協会管理者向け画面のポイント',
+      body: '「会社登録」画面で対象の会社を選び、「支払い配分」画面でその会社の手数料ルール（定率／固定額）と当月の配分額を編集します。配分結果はCSVでダウンロードできます。',
+      screen: 's8'
+    },
+    {
+      title: 'フィードバックをお願いします',
+      body: '気になる点や直したい点があれば、そのままチャットで教えてください。このガイドは左下の「❔ 使い方を見る」からいつでも見返せます。',
+      screen: null
+    }
+  ];
+  let tutorialIndex = 0;
+
+  const overlay = document.getElementById('tutorialOverlay');
+  const eyebrowEl = document.getElementById('tutorialEyebrow');
+  const titleEl = document.getElementById('tutorialTitle');
+  const bodyEl = document.getElementById('tutorialBody');
+  const dotsEl = document.getElementById('tutorialDots');
+  const backBtn = document.getElementById('tutorialBack');
+  const nextBtn = document.getElementById('tutorialNext');
+  const skipEl = document.getElementById('tutorialSkip');
+
+  dotsEl.innerHTML = tutorialSteps.map((_, i) => `<span class="tutorial-dot" data-i="${i}"></span>`).join('');
+  const dotEls = dotsEl.querySelectorAll('.tutorial-dot');
+
+  function renderTutorial() {
+    const step = tutorialSteps[tutorialIndex];
+    eyebrowEl.textContent = `使い方ガイド ${tutorialIndex + 1} / ${tutorialSteps.length}`;
+    titleEl.textContent = step.title;
+    bodyEl.textContent = step.body;
+    dotEls.forEach((d, i) => d.classList.toggle('active', i === tutorialIndex));
+    backBtn.style.visibility = tutorialIndex === 0 ? 'hidden' : 'visible';
+    nextBtn.textContent = tutorialIndex === tutorialSteps.length - 1 ? 'はじめる' : '次へ';
+    if (step.screen) showScreen(step.screen);
+  }
+
+  function openTutorial(fromStart) {
+    if (fromStart) tutorialIndex = 0;
+    overlay.classList.add('open');
+    renderTutorial();
+  }
+  function closeTutorial() {
+    overlay.classList.remove('open');
+    try { localStorage.setItem('routmgmt_tutorial_seen', '1'); } catch (e) {}
+  }
+
+  nextBtn.addEventListener('click', () => {
+    if (tutorialIndex === tutorialSteps.length - 1) { closeTutorial(); return; }
+    tutorialIndex++;
+    renderTutorial();
+  });
+  backBtn.addEventListener('click', () => {
+    if (tutorialIndex === 0) return;
+    tutorialIndex--;
+    renderTutorial();
+  });
+  skipEl.addEventListener('click', closeTutorial);
+  dotEls.forEach(d => d.addEventListener('click', () => { tutorialIndex = Number(d.dataset.i); renderTutorial(); }));
+  document.getElementById('helpBtn').addEventListener('click', () => openTutorial(true));
+
+  let seenTutorial = false;
+  try { seenTutorial = localStorage.getItem('routmgmt_tutorial_seen') === '1'; } catch (e) {}
+  if (!seenTutorial) openTutorial(true);
 </script>
 </body>
 </html>
