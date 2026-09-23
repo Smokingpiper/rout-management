@@ -930,11 +930,71 @@
       <div class="meta">${annotation.author ? escapeHtml(annotation.author) : '匿名'} ・ ${when}</div>
       <div class="comment-text">${escapeHtml(annotation.comment)}</div>
       <div class="actions" style="margin-top:8px">
+        <button class="btn btn-outline btn-sm" data-action="delete">削除</button>
+        <button class="btn btn-outline btn-sm" data-action="edit">編集</button>
         <button class="btn btn-outline btn-sm" data-action="close">閉じる</button>
       </div>
     `;
     pop.querySelector('[data-action="close"]').addEventListener('click', (e) => { e.stopPropagation(); pop.remove(); });
+    pop.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      showEditPopover(overlay, annotation);
+    });
+    pop.querySelector('[data-action="delete"]').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm('このコメントを削除しますか？')) return;
+      try {
+        const res = await fetch('/api/annotations?id=' + encodeURIComponent(annotation.id), { method: 'DELETE' });
+        if (!res.ok) throw new Error('failed');
+        annotations = annotations.filter(a => a.id !== annotation.id);
+        renderBadges();
+        renderPinsForActiveScreen();
+      } catch (err) {
+        annotateStatus.textContent = '削除に失敗しました';
+      }
+    });
     pop.addEventListener('click', (e) => e.stopPropagation());
+    overlay.appendChild(pop);
+  }
+
+  function showEditPopover(overlay, annotation) {
+    closePopoverIn(overlay);
+    const pop = document.createElement('div');
+    pop.className = 'annotate-popover';
+    pop.style.left = annotation.x + '%';
+    pop.style.top = annotation.y + '%';
+    pop.innerHTML = `
+      <div class="field"><label>お名前（任意）</label><input type="text" id="editAuthor" value="${escapeHtml(annotation.author || '')}"></div>
+      <div class="field"><label>コメント</label><textarea id="editComment" rows="3">${escapeHtml(annotation.comment)}</textarea></div>
+      <div class="actions">
+        <button class="btn btn-outline btn-sm" data-action="cancel">キャンセル</button>
+        <button class="btn btn-primary btn-sm" data-action="save">保存</button>
+      </div>
+    `;
+    pop.addEventListener('click', (e) => e.stopPropagation());
+    pop.querySelector('[data-action="cancel"]').addEventListener('click', () => {
+      pop.remove();
+      showCommentPopover(overlay, annotation);
+    });
+    pop.querySelector('[data-action="save"]').addEventListener('click', async () => {
+      const author = pop.querySelector('#editAuthor').value.trim();
+      const comment = pop.querySelector('#editComment').value.trim();
+      if (!comment) return;
+      try {
+        const res = await fetch('/api/annotations', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: annotation.id, author, comment })
+        });
+        if (!res.ok) throw new Error('failed');
+        const updated = await res.json();
+        const idx = annotations.findIndex(a => a.id === annotation.id);
+        if (idx !== -1) annotations[idx] = updated;
+        renderPinsForActiveScreen();
+      } catch (err) {
+        annotateStatus.textContent = '更新に失敗しました';
+      }
+    });
     overlay.appendChild(pop);
   }
 

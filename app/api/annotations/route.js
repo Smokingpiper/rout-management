@@ -52,6 +52,29 @@ export async function POST(request) {
   return Response.json(rows[0]);
 }
 
+export async function PATCH(request) {
+  const sql = getSql();
+  if (!sql) {
+    return Response.json({ error: "DATABASE_URL is not configured" }, { status: 503 });
+  }
+  const body = await request.json();
+  const { id, author, comment } = body || {};
+  if (!id || !comment) {
+    return Response.json({ error: "id and comment are required" }, { status: 400 });
+  }
+  await ensureTable(sql);
+  const rows = await sql`
+    UPDATE annotations
+    SET author = ${author || null}, comment = ${comment}
+    WHERE id = ${id}
+    RETURNING id, screen_id, x, y, author, comment, created_at
+  `;
+  if (rows.length === 0) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
+  return Response.json(rows[0]);
+}
+
 export async function DELETE(request) {
   const sql = getSql();
   if (!sql) {
