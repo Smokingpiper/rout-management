@@ -151,7 +151,7 @@
     padding: 18px 20px;
     margin-bottom: 16px;
   }
-  .card-title { font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
@@ -189,6 +189,7 @@
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-outline { background: transparent; border-color: var(--border); color: var(--text-2); }
   .btn-block { width: 100%; justify-content: center; }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
 
   .map-placeholder {
     height: 260px; border-radius: 12px; position: relative; overflow: hidden;
@@ -199,7 +200,8 @@
     border: 1px solid var(--border);
   }
   .map-placeholder svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .map-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--text-2); }
+  .map-placeholder.sm { height: 140px; }
+  .map-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--text-2); flex-wrap: wrap; }
   .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
   .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
@@ -207,6 +209,8 @@
   th { text-align: left; color: var(--text-3); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
   td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
   tr:last-child td { border-bottom: none; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover { background: var(--surface); }
 
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 5px; font-weight: 600; }
@@ -214,17 +218,14 @@
     width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border);
     background: var(--bg); color: var(--text); font-size: 13.5px; font-family: inherit;
   }
+  .field .hint { font-size: 11.5px; color: var(--text-3); margin-top: 4px; }
   .photo-drop {
     border: 1.5px dashed var(--border); border-radius: 10px; padding: 22px; text-align: center;
     color: var(--text-3); font-size: 12.5px; background: var(--surface);
   }
 
-  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; gap: 10px; }
   .toggle-row:last-child { border-bottom: none; }
-  .switch { width: 36px; height: 20px; border-radius: 100px; background: var(--surface-2); position: relative; cursor: pointer; }
-  .switch.on { background: var(--accent); }
-  .switch::after { content: ''; width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: left .15s; }
-  .switch.on::after { left: 18px; }
 
   .stat { text-align: left; }
   .stat .v { font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 700; }
@@ -236,6 +237,19 @@
     border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-bottom: 16px;
   }
   .alert-banner b { color: var(--warn); }
+
+  .subtabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .subtab { padding: 9px 14px; font-size: 13px; font-weight: 600; color: var(--text-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .subtab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .subpanel { display: none; }
+  .subpanel.active { display: block; }
+
+  .back-link { font-size: 12.5px; color: var(--accent-2); cursor: pointer; display: inline-block; margin-bottom: 12px; }
+
+  .checklist-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+  .checklist-row:last-child { border-bottom: none; }
+  .checkbox { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .checkbox.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
 
   @media (max-width: 900px) {
     body { flex-direction: column; }
@@ -249,22 +263,22 @@
 <body>
 
 <nav class="sidebar">
-  <h1>🗑 ゴミ収支管理<br>画面モックアップ v0.1</h1>
+  <h1>🗑 ゴミ収支管理<br>画面モックアップ v0.2</h1>
 
   <div class="group-label">ドライバー向け</div>
   <div class="nav-item active" data-screen="s1"><span class="num">1</span>今日のルート</div>
   <div class="nav-item" data-screen="s2"><span class="num">2</span>ナビ／スポット到達</div>
-  <div class="nav-item" data-screen="s3"><span class="num">3</span>回収記録入力</div>
-  <div class="nav-item" data-screen="s4"><span class="num">4</span>日報提出</div>
+  <div class="nav-item" data-screen="s3"><span class="num">3</span>日報提出</div>
+  <div class="nav-item" data-screen="s4"><span class="num">4</span>軌跡マップ</div>
 
   <div class="group-label">会社管理者向け</div>
   <div class="nav-item" data-screen="s5"><span class="num">5</span>日報一覧・承認</div>
-  <div class="nav-item" data-screen="s6"><span class="num">6</span>軌跡確認マップ</div>
-  <div class="nav-item" data-screen="s7"><span class="num">7</span>単価マスタ管理</div>
-  <div class="nav-item" data-screen="s8"><span class="num">8</span>月次集計</div>
+  <div class="nav-item" data-screen="s6"><span class="num">6</span>単価マスタ管理</div>
+  <div class="nav-item" data-screen="s7"><span class="num">7</span>月次集計</div>
 
   <div class="group-label">協会管理者向け</div>
-  <div class="nav-item" data-screen="s9"><span class="num">9</span>支払い配分</div>
+  <div class="nav-item" data-screen="s8"><span class="num">8</span>会社登録</div>
+  <div class="nav-item" data-screen="s9"><span class="num">9</span>支払い配分（会社別）</div>
   <div class="nav-item" data-screen="s10"><span class="num">10</span>ユーザー招待管理</div>
 
   <div class="theme-toggle" id="themeToggle">🌓 ライト/ダーク切替</div>
@@ -277,17 +291,17 @@
     <div class="screen-header">
       <div class="breadcrumb">ドライバー向け</div>
       <div class="screen-title">今日のルート</div>
-      <div class="screen-desc">担当ルートのスポット一覧と進捗。タップでスポット到達画面へ。</div>
+      <div class="screen-desc">担当ルートのスポット一覧。到達状況はGPS軌跡から自動判定（スポット単位のデータ入力は行わない）。</div>
     </div>
     <div class="grid-3" style="margin-bottom:16px">
-      <div class="card stat"><div class="v">8 / 14</div><div class="l">回収完了スポット</div></div>
+      <div class="card stat"><div class="v">11 / 14</div><div class="l">到達確認済みスポット</div></div>
       <div class="card stat"><div class="v">2</div><div class="l">要注意スポット残り</div></div>
-      <div class="card stat"><div class="v">142.5kg</div><div class="l">本日の回収重量</div></div>
+      <div class="card stat"><div class="v">古紙</div><div class="l">本日の品目</div></div>
     </div>
     <div class="card">
       <div class="card-title">杉並第3ルート（古紙）<span class="pill info">実施中</span></div>
-      <div class="spot-row done"><div class="spot-order">01</div><div class="spot-name">阿佐ヶ谷北商店街</div><span class="pill ok">完了</span></div>
-      <div class="spot-row done"><div class="spot-order">02</div><div class="spot-name">阿佐ヶ谷駅前ビル</div><span class="pill ok">完了</span></div>
+      <div class="spot-row done"><div class="spot-order">01</div><div class="spot-name">阿佐ヶ谷北商店街</div><span class="pill ok">到達確認</span></div>
+      <div class="spot-row done"><div class="spot-order">02</div><div class="spot-name">阿佐ヶ谷駅前ビル</div><span class="pill ok">到達確認</span></div>
       <div class="spot-row">
         <div class="spot-order">03</div>
         <div>
@@ -307,7 +321,7 @@
     <div class="screen-header">
       <div class="breadcrumb">ドライバー向け</div>
       <div class="screen-title">ナビ／スポット到達</div>
-      <div class="screen-desc">Google Mapsで経路案内。要注意スポットは到達時にアラート表示＋確認が必須。</div>
+      <div class="screen-desc">Google Mapsで経路案内。要注意スポットは到達時にアラート表示＋確認タップが必須（このタップのみがスポット単位で記録される）。</div>
     </div>
     <div class="alert-banner">
       <div>⚠️</div>
@@ -326,47 +340,101 @@
     </div>
   </section>
 
-  <!-- 3: 回収記録入力 -->
+  <!-- 3: 日報提出（回収記録統合） -->
   <section class="screen" id="s3">
     <div class="screen-header">
       <div class="breadcrumb">ドライバー向け</div>
-      <div class="screen-title">回収記録入力</div>
-      <div class="screen-desc">重量・写真・メモを記録。重量は必須入力。</div>
+      <div class="screen-title">日報提出</div>
+      <div class="screen-desc">1日のルートに対して最後にまとめて入力する。スポット単位の重量記録はない（種別・重量は1日分をまとめて入力）。</div>
     </div>
     <div class="card">
-      <div class="card-title">高円寺南アパート裏</div>
-      <div class="field"><label>ゴミ種類</label><select><option>古紙</option><option>ビン</option><option>缶</option></select></div>
-      <div class="field"><label>回収重量（kg）必須</label><input type="number" placeholder="例：24.5"></div>
+      <div class="card-title">杉並第3ルート — 2026-09-23<span class="pill info">全14スポット到達確認済み</span></div>
+      <div class="checklist-row"><div class="checkbox checked">✓</div><div>阿佐ヶ谷北商店街</div></div>
+      <div class="checklist-row"><div class="checkbox checked">✓</div><div>阿佐ヶ谷駅前ビル</div></div>
+      <div class="checklist-row"><div class="checkbox checked">✓</div><div>高円寺南アパート裏 <span class="pill warn" style="margin-left:6px">要注意・確認済</span></div></div>
+      <div class="checklist-row"><div class="checkbox checked">✓</div><div>… 他11スポット</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">回収記録（本日分まとめて入力）</div>
       <div class="field">
-        <label>写真（任意・自動でavif圧縮して保存）</label>
+        <label>ゴミ種別（本日のルート全体で1種類）</label>
+        <select><option>古紙</option><option>ビン</option><option>缶</option></select>
+      </div>
+      <div class="field">
+        <label>総重量（kg）必須</label>
+        <input type="number" placeholder="例：142.5">
+        <div class="hint">ごみ収集車の計量器に表示された値をそのまま入力する</div>
+      </div>
+      <div class="field">
+        <label>計量器の写真（任意・自動でavif圧縮して保存）</label>
         <div class="photo-drop">📷 タップして撮影 / アップロード</div>
       </div>
-      <div class="field"><label>メモ</label><textarea rows="2" placeholder="分別状況など"></textarea></div>
+      <div class="field"><label>メモ</label><textarea rows="2" placeholder="特記事項など"></textarea></div>
     </div>
-    <button class="btn btn-primary btn-block">この記録を保存して次へ</button>
+    <button class="btn btn-primary btn-block">日報を提出する</button>
   </section>
 
-  <!-- 4: 日報提出 -->
+  <!-- 4: 軌跡マップ -->
   <section class="screen" id="s4">
     <div class="screen-header">
       <div class="breadcrumb">ドライバー向け</div>
-      <div class="screen-title">日報提出</div>
-      <div class="screen-desc">全スポット回収完了後、日報をまとめて提出。承認はルート単位の1段階。</div>
+      <div class="screen-title">軌跡マップ</div>
+      <div class="screen-desc">計画スポット位置（●）と実走GPS軌跡（点線）を重ねて表示し、回り損ないがないか自分で確認できる。</div>
     </div>
-    <div class="card">
-      <div class="card-title">杉並第3ルート（古紙）— 2026-09-23</div>
-      <table>
-        <tr><th>スポット</th><th>種別</th><th>重量</th><th>状態</th></tr>
-        <tr><td>阿佐ヶ谷北商店街</td><td>古紙</td><td>18.0kg</td><td><span class="pill ok">完了</span></td></tr>
-        <tr><td>阿佐ヶ谷駅前ビル</td><td>古紙</td><td>22.5kg</td><td><span class="pill ok">完了</span></td></tr>
-        <tr><td>高円寺南アパート裏</td><td>古紙</td><td>24.5kg</td><td><span class="pill ok">完了（要注意確認済）</span></td></tr>
-      </table>
+
+    <div class="subtabs">
+      <div class="subtab active" data-sub="today">今日の軌跡</div>
+      <div class="subtab" data-sub="list">日別リスト</div>
     </div>
-    <div class="card" style="display:flex;justify-content:space-between;align-items:center">
-      <div><b>合計回収重量</b><div style="color:var(--text-3);font-size:12px">14スポット中14完了</div></div>
-      <div class="stat"><div class="v">142.5kg</div></div>
+
+    <div class="subpanel active" id="sub-today">
+      <div class="card">
+        <div class="card-title">杉並第3ルート — 本日（2026-09-23）</div>
+        <div class="map-placeholder" style="height:320px">
+          <svg viewBox="0 0 400 320">
+            <path d="M20,290 C60,250 90,260 120,210 C150,160 190,180 220,130 C250,80 300,100 340,45" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="7 6"/>
+            <circle cx="20" cy="290" r="7" fill="var(--accent)"/>
+            <circle cx="120" cy="210" r="7" fill="var(--accent)"/>
+            <circle cx="220" cy="130" r="7" fill="var(--warn)"/>
+            <circle cx="340" cy="45" r="7" fill="var(--accent)"/>
+          </svg>
+        </div>
+        <div class="map-legend">
+          <span><i class="dot" style="background:var(--accent)"></i>通常スポット（通過確認済）</span>
+          <span><i class="dot" style="background:var(--warn)"></i>要注意スポット</span>
+          <span><i class="dot" style="background:var(--accent-2)"></i>実走軌跡</span>
+        </div>
+      </div>
     </div>
-    <button class="btn btn-primary btn-block">日報を提出する</button>
+
+    <div class="subpanel" id="sub-list">
+      <div id="list-view">
+        <div class="card">
+          <table>
+            <tr><th>日付</th><th>ルート</th><th>総重量</th><th>状態</th></tr>
+            <tr class="clickable" onclick="showDayDetail()"><td>2026-09-23</td><td>杉並第3ルート</td><td>142.5kg</td><td><span class="pill info">実施中</span></td></tr>
+            <tr class="clickable" onclick="showDayDetail()"><td>2026-09-22</td><td>杉並第3ルート</td><td>135.0kg</td><td><span class="pill ok">承認済み</span></td></tr>
+            <tr class="clickable" onclick="showDayDetail()"><td>2026-09-21</td><td>杉並第3ルート</td><td>128.0kg</td><td><span class="pill ok">承認済み</span></td></tr>
+          </table>
+        </div>
+      </div>
+      <div id="day-detail" style="display:none">
+        <div class="back-link" onclick="showList()">← 日別リストに戻る</div>
+        <div class="card">
+          <div class="card-title">杉並第3ルート — 2026-09-22<span class="pill danger">1件、軌跡から外れたスポットあり</span></div>
+          <div class="map-placeholder" style="height:300px">
+            <svg viewBox="0 0 400 300">
+              <path d="M20,280 C60,240 90,250 120,200 C150,150 190,170 220,120 C250,70 300,90 340,40" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="7 6"/>
+              <circle cx="20" cy="280" r="7" fill="var(--accent)"/>
+              <circle cx="120" cy="200" r="7" fill="var(--accent)"/>
+              <circle cx="270" cy="180" r="7" fill="var(--danger)"/>
+              <text x="280" y="175" fill="var(--danger)" font-size="11" font-family="Noto Sans JP">未通過？</text>
+              <circle cx="340" cy="40" r="7" fill="var(--accent)"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- 5: 日報一覧・承認 -->
@@ -374,57 +442,41 @@
     <div class="screen-header">
       <div class="breadcrumb">会社管理者向け</div>
       <div class="screen-title">日報一覧・承認</div>
-      <div class="screen-desc">ルート単位で日報を確認・承認する。</div>
+      <div class="screen-desc">ルート単位で日報を確認・承認する。総重量・種別は1日1件、軌跡は参考としてサマリ表示。</div>
     </div>
     <div class="card">
       <table>
-        <tr><th>日付</th><th>ルート</th><th>担当</th><th>重量</th><th>状態</th><th></th></tr>
-        <tr><td>09/23</td><td>杉並第3ルート</td><td>田中</td><td>142.5kg</td><td><span class="pill warn">承認待ち</span></td><td><button class="btn btn-outline">確認する</button></td></tr>
-        <tr><td>09/23</td><td>中野第1ルート</td><td>佐藤</td><td>98.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline">詳細</button></td></tr>
-        <tr><td>09/22</td><td>杉並第3ルート</td><td>田中</td><td>135.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline">詳細</button></td></tr>
+        <tr><th>日付</th><th>ルート</th><th>担当</th><th>種別</th><th>総重量</th><th>状態</th><th></th></tr>
+        <tr><td>09/23</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>142.5kg</td><td><span class="pill warn">承認待ち</span></td><td><button class="btn btn-outline btn-sm">確認する</button></td></tr>
+        <tr><td>09/23</td><td>中野第1ルート</td><td>佐藤</td><td>ビン</td><td>98.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline btn-sm">詳細</button></td></tr>
+        <tr><td>09/22</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>135.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline btn-sm">詳細</button></td></tr>
       </table>
     </div>
     <div class="card">
-      <div class="card-title">杉並第3ルート — 09/23 承認</div>
-      <p style="font-size:13.5px;color:var(--text-2);margin-bottom:14px">軌跡確認マップで実走ログを確認してから承認してください →<a href="#" onclick="showScreen('s6');return false;" style="color:var(--accent-2)"> 軌跡を見る</a></p>
+      <div class="card-title">杉並第3ルート — 09/23 承認<span class="pill ok">総重量 142.5kg・古紙</span></div>
       <div class="grid-2">
+        <div>
+          <div class="map-placeholder sm">
+            <svg viewBox="0 0 400 200"><path d="M20,180 C60,140 90,150 120,110 C150,70 220,90 260,50 C290,25 320,30 350,15" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="20" cy="180" r="5" fill="var(--accent)"/><circle cx="350" cy="15" r="5" fill="var(--accent)"/></svg>
+          </div>
+          <div class="map-legend" style="margin-top:6px"><span>軌跡サマリ（参考）</span></div>
+        </div>
+        <div>
+          <p style="font-size:13px;color:var(--text-2);line-height:1.7">
+            14スポット中14件、GPS軌跡から通過を確認済み。要注意スポット1件のアラート確認タップも記録あり。<br>
+            異常な逸脱は検出されていません。
+          </p>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:14px">
         <button class="btn btn-outline btn-block">差し戻す</button>
         <button class="btn btn-primary btn-block">日報を承認する</button>
       </div>
     </div>
   </section>
 
-  <!-- 6: 軌跡確認マップ -->
+  <!-- 6: 単価マスタ管理 -->
   <section class="screen" id="s6">
-    <div class="screen-header">
-      <div class="breadcrumb">会社管理者向け</div>
-      <div class="screen-title">軌跡確認マップ</div>
-      <div class="screen-desc">計画スポット位置（●）と実走GPS軌跡（点線）を重ねて表示し、回り損ないがないか目視確認する。</div>
-    </div>
-    <div class="card">
-      <div class="card-title">杉並第3ルート — 09/23の実走ログ</div>
-      <div class="map-placeholder" style="height:340px">
-        <svg viewBox="0 0 400 340">
-          <path d="M20,300 C60,260 90,270 120,220 C150,170 190,190 220,140 C250,90 300,110 340,50" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="7 6"/>
-          <circle cx="20" cy="300" r="7" fill="var(--accent)"/>
-          <circle cx="120" cy="220" r="7" fill="var(--accent)"/>
-          <circle cx="220" cy="140" r="7" fill="var(--warn)"/>
-          <circle cx="340" cy="50" r="7" fill="var(--accent)"/>
-          <circle cx="270" cy="200" r="7" fill="var(--danger)"/>
-          <text x="280" y="195" fill="var(--danger)" font-size="11" font-family="Noto Sans JP">未通過？</text>
-        </svg>
-      </div>
-      <div class="map-legend">
-        <span><i class="dot" style="background:var(--accent)"></i>通常スポット（通過確認済）</span>
-        <span><i class="dot" style="background:var(--warn)"></i>要注意スポット</span>
-        <span><i class="dot" style="background:var(--danger)"></i>軌跡から外れているスポット</span>
-        <span><i class="dot" style="background:var(--accent-2)"></i>実走軌跡</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- 7: 単価マスタ管理 -->
-  <section class="screen" id="s7">
     <div class="screen-header">
       <div class="breadcrumb">会社管理者向け</div>
       <div class="screen-title">単価マスタ管理</div>
@@ -442,12 +494,12 @@
     <button class="btn btn-primary">＋ 新しい単価改定を登録</button>
   </section>
 
-  <!-- 8: 月次集計 -->
-  <section class="screen" id="s8">
+  <!-- 7: 月次集計 -->
+  <section class="screen" id="s7">
     <div class="screen-header">
       <div class="breadcrumb">会社管理者向け</div>
       <div class="screen-title">月次集計</div>
-      <div class="screen-desc">会社別・エリア別の回収重量・金額集計（締め後は確定値）。</div>
+      <div class="screen-desc">日報（1日1件）の総重量×単価を会社別・エリア別に集計（締め後は確定値）。</div>
     </div>
     <div class="grid-3" style="margin-bottom:16px">
       <div class="card stat"><div class="v">4,820kg</div><div class="l">2026年9月 総回収重量</div></div>
@@ -464,27 +516,67 @@
     </div>
   </section>
 
-  <!-- 9: 支払い配分 -->
+  <!-- 8: 会社登録 -->
+  <section class="screen" id="s8">
+    <div class="screen-header">
+      <div class="breadcrumb">協会管理者向け</div>
+      <div class="screen-title">会社登録</div>
+      <div class="screen-desc">組合傘下の会社を登録・編集する。ここで選んだ会社が支払い配分編集画面の対象になる。</div>
+    </div>
+    <div class="card">
+      <table>
+        <tr><th>会社名</th><th>主な取扱品目</th><th>契約月額</th><th></th></tr>
+        <tr><td>古紙センター</td><td>古紙</td><td>¥48,000</td><td><button class="btn btn-outline btn-sm" onclick="showScreen('s9')">配分編集へ</button></td></tr>
+        <tr><td>ビン工房</td><td>ビン</td><td>¥45,000</td><td><button class="btn btn-outline btn-sm" onclick="showScreen('s9')">配分編集へ</button></td></tr>
+        <tr><td>缶リサイクル</td><td>缶</td><td>¥42,000</td><td><button class="btn btn-outline btn-sm" onclick="showScreen('s9')">配分編集へ</button></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">新規会社登録</div>
+      <div class="grid-2">
+        <div class="field"><label>会社名</label><input placeholder="例：古紙センター"></div>
+        <div class="field"><label>主な取扱品目</label><select><option>古紙</option><option>ビン</option><option>缶</option></select></div>
+        <div class="field"><label>契約月額</label><input placeholder="例：48000"></div>
+      </div>
+      <button class="btn btn-primary">登録する</button>
+    </div>
+  </section>
+
+  <!-- 9: 支払い配分（会社ごと編集） -->
   <section class="screen" id="s9">
     <div class="screen-header">
       <div class="breadcrumb">協会管理者向け</div>
-      <div class="screen-title">支払い配分</div>
-      <div class="screen-desc">会社ごとの月次配分額。手数料マスタは料率／固定額を編集できる。</div>
+      <div class="screen-title">支払い配分（会社ごと編集）</div>
+      <div class="screen-desc">会社登録画面から会社を選び、その会社の手数料ルールと当月配分額を編集する。</div>
     </div>
     <div class="card">
-      <div class="card-title">手数料マスタ</div>
-      <div class="toggle-row"><div>全社共通ルール<div class="spot-note">company_id = null のデフォルトルール</div></div><div style="display:flex;align-items:center;gap:10px"><input style="width:70px" value="5.0"><span style="font-size:12px;color:var(--text-3)">% 定率</span></div></div>
-      <div class="toggle-row"><div>古紙センター（個別ルール上書き）</div><div style="display:flex;align-items:center;gap:10px"><input style="width:70px" value="4.0"><span style="font-size:12px;color:var(--text-3)">% 定率</span></div></div>
-      <button class="btn btn-outline" style="margin-top:10px">＋ 会社別ルールを追加</button>
+      <div class="card-title">古紙センター <span class="pill info">2026年9月</span></div>
+      <table style="margin-bottom:16px">
+        <tr><th>総額(gross)</th><th>手数料</th><th>配分額</th></tr>
+        <tr><td>¥38,520</td><td>¥1,541</td><td>¥36,979</td></tr>
+      </table>
+      <div class="toggle-row">
+        <div>手数料タイプ</div>
+        <select style="width:160px"><option>定率（%）</option><option>固定額</option></select>
+      </div>
+      <div class="toggle-row">
+        <div>料率</div>
+        <div style="display:flex;align-items:center;gap:8px"><input style="width:80px" value="4.0"><span style="font-size:12px;color:var(--text-3)">%</span></div>
+      </div>
+      <div class="grid-2" style="margin-top:14px">
+        <button class="btn btn-outline btn-block">⬇ CSVダウンロード</button>
+        <button class="btn btn-primary btn-block">保存する</button>
+      </div>
     </div>
     <div class="card">
-      <div class="card-title">2026年9月 配分結果</div>
+      <div class="card-title">他社の配分結果（一覧・CSV一括DL）</div>
       <table>
         <tr><th>会社</th><th>総額(gross)</th><th>手数料</th><th>配分額</th></tr>
         <tr><td>古紙センター</td><td>¥38,520</td><td>¥1,541</td><td>¥36,979</td></tr>
         <tr><td>ビン工房</td><td>¥30,240</td><td>¥1,512</td><td>¥28,728</td></tr>
         <tr><td>缶リサイクル</td><td>¥18,000</td><td>¥900</td><td>¥17,100</td></tr>
       </table>
+      <button class="btn btn-outline" style="margin-top:12px">⬇ 全社まとめてCSVダウンロード</button>
     </div>
   </section>
 
@@ -525,6 +617,23 @@
     window.scrollTo(0, 0);
   }
   navItems.forEach(item => item.addEventListener('click', () => showScreen(item.dataset.screen)));
+
+  const subtabs = document.querySelectorAll('.subtab');
+  subtabs.forEach(tab => tab.addEventListener('click', () => {
+    subtabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.subpanel').forEach(p => p.classList.remove('active'));
+    document.getElementById('sub-' + tab.dataset.sub).classList.add('active');
+  }));
+
+  function showDayDetail() {
+    document.getElementById('list-view').style.display = 'none';
+    document.getElementById('day-detail').style.display = 'block';
+  }
+  function showList() {
+    document.getElementById('day-detail').style.display = 'none';
+    document.getElementById('list-view').style.display = 'block';
+  }
 
   const themeToggle = document.getElementById('themeToggle');
   themeToggle.addEventListener('click', () => {
