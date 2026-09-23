@@ -230,6 +230,11 @@
     background: var(--bg); color: var(--text); font-size: 13.5px; font-family: inherit;
   }
   .field .hint { font-size: 11.5px; color: var(--text-3); margin-top: 4px; }
+  .search-input {
+    width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 13.5px; font-family: inherit;
+    margin-bottom: 12px;
+  }
   .photo-drop {
     border: 1.5px dashed var(--border); border-radius: 10px; padding: 22px; text-align: center;
     color: var(--text-3); font-size: 12.5px; background: var(--surface);
@@ -565,12 +570,16 @@
       <div class="screen-desc">ルート単位で日報を確認・承認する。総重量・種別は1日1件、軌跡は参考としてサマリ表示。</div>
     </div>
     <div class="card">
+      <input type="text" id="reportSearch" class="search-input" placeholder="🔍 日付・ルート・担当・種別で検索">
       <table>
-        <tr><th>日付</th><th>ルート</th><th>担当</th><th>種別</th><th>総重量</th><th>状態</th><th></th></tr>
-        <tr><td>09/23</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>142.5kg</td><td><span class="pill warn">承認待ち</span></td><td><button class="btn btn-outline btn-sm">確認する</button></td></tr>
-        <tr><td>09/23</td><td>中野第1ルート</td><td>佐藤</td><td>ビン</td><td>98.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline btn-sm">詳細</button></td></tr>
-        <tr><td>09/22</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>135.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline btn-sm">詳細</button></td></tr>
+        <thead><tr><th>日付</th><th>ルート</th><th>担当</th><th>種別</th><th>総重量</th><th>状態</th><th></th></tr></thead>
+        <tbody id="reportRows">
+          <tr><td>09/23</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>142.5kg</td><td><span class="pill warn">承認待ち</span></td><td><button class="btn btn-outline btn-sm">確認する</button></td></tr>
+          <tr><td>09/23</td><td>中野第1ルート</td><td>佐藤</td><td>ビン</td><td>98.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline btn-sm">詳細</button></td></tr>
+          <tr><td>09/22</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>135.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline btn-sm">詳細</button></td></tr>
+        </tbody>
       </table>
+      <div id="reportNoResults" style="display:none; padding:16px 10px; text-align:center; color:var(--text-3); font-size:13px;">該当する日報がありません</div>
     </div>
     <div class="card">
       <div class="card-title">杉並第3ルート — 09/23 承認<span class="pill ok">総重量 142.5kg・古紙</span></div>
@@ -1062,6 +1071,22 @@
     annotateStatus.textContent = annotationMode ? '画面をクリックしてコメントを追加' : '';
     renderPinsForActiveScreen();
   });
+
+  const reportSearch = document.getElementById('reportSearch');
+  if (reportSearch) {
+    const reportRows = document.querySelectorAll('#reportRows tr');
+    const reportNoResults = document.getElementById('reportNoResults');
+    reportSearch.addEventListener('input', () => {
+      const q = reportSearch.value.trim().toLowerCase();
+      let visibleCount = 0;
+      reportRows.forEach(row => {
+        const match = row.textContent.toLowerCase().includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
+      });
+      reportNoResults.style.display = visibleCount === 0 ? 'block' : 'none';
+    });
+  }
 
   const originalShowScreen = showScreen;
   showScreen = function (id) {
