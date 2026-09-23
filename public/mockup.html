@@ -222,6 +222,7 @@
   tr:last-child td { border-bottom: none; }
   tr.clickable { cursor: pointer; }
   tr.clickable:hover { background: var(--surface); }
+  tr.selected-report { background: var(--accent-dim); }
 
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 5px; font-weight: 600; }
@@ -266,6 +267,19 @@
   .checklist-row:last-child { border-bottom: none; }
   .checkbox { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
   .checkbox.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .print-header { display: none; }
+
+  @media print {
+    .sidebar, .tutorial-overlay, .annotate-status, .annotation-overlay, .no-print { display: none !important; }
+    main { padding: 0; max-width: 100%; }
+    .card { border: none; box-shadow: none; padding: 0; }
+    #reportDetailCard { display: none !important; }
+    .print-header { display: block !important; }
+    body { background: #fff; color: #000; }
+    table, th, td { color: #000; }
+    th, td { border-bottom-color: #ccc; }
+  }
 
   @media (max-width: 900px) {
     body { flex-direction: column; }
@@ -569,31 +583,37 @@
       <div class="screen-title">日報一覧・承認</div>
       <div class="screen-desc">ルート単位で日報を確認・承認する。総重量・種別は1日1件、軌跡は参考としてサマリ表示。</div>
     </div>
-    <div class="card">
-      <input type="text" id="reportSearch" class="search-input" placeholder="🔍 日付・ルート・担当・種別で検索">
+    <div class="card" id="reportListCard">
+      <div class="print-header">
+        <div style="font-weight:700; font-size:16px; margin-bottom:4px">日報一覧（印刷）</div>
+        <div id="printMeta" style="font-size:12px; color:#555; margin-bottom:12px"></div>
+      </div>
+      <div class="grid-2" style="align-items:flex-end; margin-bottom:0">
+        <input type="text" id="reportSearch" class="search-input" placeholder="🔍 日付・ルート・担当・種別で検索">
+        <button class="btn btn-outline btn-block no-print" id="printReportsBtn" style="margin-bottom:12px">🖨 表示中の日報を一括印刷</button>
+      </div>
       <table>
-        <thead><tr><th>日付</th><th>ルート</th><th>担当</th><th>種別</th><th>総重量</th><th>状態</th><th></th></tr></thead>
+        <thead><tr><th>日付</th><th>ルート</th><th>担当</th><th>種別</th><th>総重量</th><th>状態</th><th class="no-print"></th></tr></thead>
         <tbody id="reportRows">
-          <tr><td>09/23</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>142.5kg</td><td><span class="pill warn">承認待ち</span></td><td><button class="btn btn-outline btn-sm">確認する</button></td></tr>
-          <tr><td>09/23</td><td>中野第1ルート</td><td>佐藤</td><td>ビン</td><td>98.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline btn-sm">詳細</button></td></tr>
-          <tr><td>09/22</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>135.0kg</td><td><span class="pill ok">承認済み</span></td><td><button class="btn btn-outline btn-sm">詳細</button></td></tr>
+          <tr data-report-id="r1"><td>09/23</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>142.5kg</td><td><span class="pill warn">承認待ち</span></td><td class="no-print"><button class="btn btn-outline btn-sm" data-select-report="r1">確認する</button></td></tr>
+          <tr data-report-id="r2"><td>09/23</td><td>中野第1ルート</td><td>佐藤</td><td>ビン</td><td>98.0kg</td><td><span class="pill ok">承認済み</span></td><td class="no-print"><button class="btn btn-outline btn-sm" data-select-report="r2">詳細</button></td></tr>
+          <tr data-report-id="r3"><td>09/22</td><td>杉並第3ルート</td><td>田中</td><td>古紙</td><td>135.0kg</td><td><span class="pill ok">承認済み</span></td><td class="no-print"><button class="btn btn-outline btn-sm" data-select-report="r3">詳細</button></td></tr>
         </tbody>
       </table>
       <div id="reportNoResults" style="display:none; padding:16px 10px; text-align:center; color:var(--text-3); font-size:13px;">該当する日報がありません</div>
     </div>
-    <div class="card">
-      <div class="card-title">杉並第3ルート — 09/23 承認<span class="pill ok">総重量 142.5kg・古紙</span></div>
+    <div class="card no-print" id="reportDetailCard">
+      <div class="card-title"><span id="detailTitle">杉並第3ルート — 09/23 承認</span><span class="pill ok" id="detailBadge">総重量 142.5kg・古紙</span></div>
       <div class="grid-2">
         <div>
-          <div class="map-placeholder sm">
+          <div class="map-placeholder sm" id="detailMapWrap">
             <svg viewBox="0 0 400 200"><path d="M20,180 C60,140 90,150 120,110 C150,70 220,90 260,50 C290,25 320,30 350,15" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="20" cy="180" r="5" fill="var(--accent)"/><circle cx="350" cy="15" r="5" fill="var(--accent)"/></svg>
           </div>
           <div class="map-legend" style="margin-top:6px"><span>軌跡サマリ（参考）</span></div>
         </div>
         <div>
-          <p style="font-size:13px;color:var(--text-2);line-height:1.7">
-            14スポット中14件、GPS軌跡から通過を確認済み。要注意スポット1件のアラート確認タップも記録あり。<br>
-            異常な逸脱は検出されていません。
+          <p style="font-size:13px;color:var(--text-2);line-height:1.7" id="detailTrackNote">
+            14スポット中14件、GPS軌跡から通過を確認済み。要注意スポット1件のアラート確認タップも記録あり。異常な逸脱は検出されていません。
           </p>
         </div>
       </div>
@@ -1085,6 +1105,63 @@
         if (match) visibleCount++;
       });
       reportNoResults.style.display = visibleCount === 0 ? 'block' : 'none';
+    });
+  }
+
+  // 日報詳細の切り替え
+  const reportData = {
+    r1: {
+      title: '杉並第3ルート — 09/23 承認',
+      badge: '総重量 142.5kg・古紙',
+      badgeClass: 'ok',
+      note: '14スポット中14件、GPS軌跡から通過を確認済み。要注意スポット1件のアラート確認タップも記録あり。異常な逸脱は検出されていません。',
+      map: '<svg viewBox="0 0 400 200"><path d="M20,180 C60,140 90,150 120,110 C150,70 220,90 260,50 C290,25 320,30 350,15" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="20" cy="180" r="5" fill="var(--accent)"/><circle cx="350" cy="15" r="5" fill="var(--accent)"/></svg>'
+    },
+    r2: {
+      title: '中野第1ルート — 09/23 承認',
+      badge: '総重量 98.0kg・ビン',
+      badgeClass: 'ok',
+      note: '10スポット中10件、GPS軌跡から通過を確認済み。異常な逸脱は検出されていません。',
+      map: '<svg viewBox="0 0 400 200"><path d="M30,170 C70,150 100,120 140,100 C180,80 240,90 280,60 C310,40 330,35 360,20" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="30" cy="170" r="5" fill="var(--accent)"/><circle cx="360" cy="20" r="5" fill="var(--accent)"/></svg>'
+    },
+    r3: {
+      title: '杉並第3ルート — 09/22 承認',
+      badge: '総重量 135.0kg・古紙',
+      badgeClass: 'warn',
+      note: '14スポット中13件、GPS軌跡から通過を確認済み。1件、軌跡から外れたスポットがあるため要確認。',
+      map: '<svg viewBox="0 0 400 200"><path d="M20,180 C60,150 90,155 120,120 C150,90 190,100 220,70 C250,40 300,55 350,15" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-dasharray="6 5"/><circle cx="20" cy="180" r="5" fill="var(--accent)"/><circle cx="270" cy="110" r="5" fill="var(--danger)"/><circle cx="350" cy="15" r="5" fill="var(--accent)"/></svg>'
+    }
+  };
+
+  function selectReport(id) {
+    const data = reportData[id];
+    if (!data) return;
+    document.getElementById('detailTitle').textContent = data.title;
+    const badge = document.getElementById('detailBadge');
+    badge.textContent = data.badge;
+    badge.className = 'pill ' + data.badgeClass;
+    document.getElementById('detailTrackNote').textContent = data.note;
+    document.getElementById('detailMapWrap').innerHTML = data.map;
+    document.querySelectorAll('#reportRows tr').forEach(row => {
+      row.classList.toggle('selected-report', row.dataset.reportId === id);
+    });
+    const detailCard = document.getElementById('reportDetailCard');
+    if (detailCard) detailCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  document.querySelectorAll('[data-select-report]').forEach(btn => {
+    btn.addEventListener('click', () => selectReport(btn.dataset.selectReport));
+  });
+  selectReport('r1');
+
+  const printReportsBtn = document.getElementById('printReportsBtn');
+  if (printReportsBtn) {
+    printReportsBtn.addEventListener('click', () => {
+      const q = reportSearch ? reportSearch.value.trim() : '';
+      const visibleCount = document.querySelectorAll('#reportRows tr:not([style*="display: none"])').length;
+      document.getElementById('printMeta').textContent =
+        `検索条件: ${q ? '"' + q + '"' : 'なし'} ・ 対象: ${visibleCount}件 ・ 印刷日時: ${new Date().toLocaleString('ja-JP')}`;
+      window.print();
     });
   }
 
