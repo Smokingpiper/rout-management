@@ -13,11 +13,13 @@ declare global {
 }
 
 function loadGoogleMaps(apiKey: string): Promise<void> {
-  if (window.google?.maps) return Promise.resolve()
+  // google.maps.Map は同期読み込み完了時点で使えるようにする（loading=async だと
+  // importLibrary() 経由でしか使えず、直接 new google.maps.Map() すると落ちるため付けない）
+  if (window.google?.maps?.Map) return Promise.resolve()
   if (window.__gmapsLoadPromise) return window.__gmapsLoadPromise
   window.__gmapsLoadPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&loading=async`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`
     script.async = true
     script.onload = () => resolve()
     script.onerror = () => reject(new Error('Google Mapsの読み込みに失敗しました'))
