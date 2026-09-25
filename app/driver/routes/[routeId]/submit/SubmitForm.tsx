@@ -14,6 +14,26 @@ export default function SubmitForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(report.status !== 'in_progress')
+  const [photoStatus, setPhotoStatus] = useState<Record<'report' | 'receipt', 'idle' | 'uploading' | 'done' | 'error' | 'unavailable'>>({ report: 'idle', receipt: 'idle' })
+
+  async function uploadPhoto(type: 'report' | 'receipt', file: File) {
+    setPhotoStatus(s => ({ ...s, [type]: 'uploading' }))
+    const form = new FormData()
+    form.append('file', file)
+    form.append('dailyReportId', report.id)
+    form.append('type', type)
+    try {
+      const res = await fetch('/api/driver/upload-photo', { method: 'POST', body: form })
+      if (res.status === 503) {
+        setPhotoStatus(s => ({ ...s, [type]: 'unavailable' }))
+        return
+      }
+      if (!res.ok) throw new Error('failed')
+      setPhotoStatus(s => ({ ...s, [type]: 'done' }))
+    } catch {
+      setPhotoStatus(s => ({ ...s, [type]: 'error' }))
+    }
+  }
 
   async function submit() {
     if (!weight) {
@@ -71,8 +91,14 @@ export default function SubmitForm({
         <div className="hint">ごみ収集車の計量器に表示された値をそのまま入力する</div>
       </div>
       <div className="field">
-        <label>日報・回収レシートの写真</label>
-        <div className="hint">写真アップロードは準備中です（ストレージ設定後に対応）</div>
+        <label>日報の写真</label>
+        <input type="file" accept="image/*" capture="environment" onChange={e => e.target.files?.[0] && uploadPhoto('report', e.target.files[0])} />
+        <PhotoStatusLine status={photoStatus.report} />
+      </div>
+      <div className="field">
+        <label>回収レシートの写真</label>
+        <input type="file" accept="image/*" capture="environment" onChange={e => e.target.files?.[0] && uploadPhoto('receipt', e.target.files[0])} />
+        <PhotoStatusLine status={photoStatus.receipt} />
       </div>
       <div className="field">
         <label>メモ</label>
@@ -84,4 +110,12 @@ export default function SubmitForm({
       </button>
     </div>
   )
+}
+
+function PhotoStatusLine({ status }: { status: 'idle' | 'uploading' | 'done' | 'error' | 'unavailable' }) {
+  if (status === 'idle') return <div className="hint">任意。自動でストレージに保存されます</div>
+  if (status === 'uploading') return <div className="hint">アップロード中…</div>
+  if (status === 'done') return <div className="hint" style={{ color: 'var(--accent)' }}>✓ アップロード完了</div>
+  if (status === 'unavailable') return <div className="hint" style={{ color: 'var(--warn)' }}>写真ストレージが未設定のため、今はアップロードできません</div>
+  return <div className="hint" style={{ color: 'var(--danger)' }}>アップロードに失敗しました</div>
 }

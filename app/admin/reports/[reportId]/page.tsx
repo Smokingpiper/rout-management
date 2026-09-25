@@ -4,6 +4,7 @@ import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import TrackMap from '@/components/TrackMap'
 import ApproveActions from './ApproveActions'
+import PhotoViewer from './PhotoViewer'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +49,11 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
             <tr><td style={{ color: 'var(--text-3)' }}>GPS記録点数</td><td>{trackPoints.length}件</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div className="card">
+        <div className="card-title">添付写真</div>
+        <PhotoViewer reportId={report.id} hasReportPhoto={!!report.reportPhotoUrl} hasReceiptPhoto={!!report.receiptPhotoUrl} />
       </div>
 
       <div className="card">
