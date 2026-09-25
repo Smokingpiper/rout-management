@@ -2,7 +2,7 @@ import { db } from '@/db/client'
 import { routes, areas, dailyReports, routeTrackPoints, spots } from '@/db/schema'
 import { eq, asc, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import TrackPlot from '@/components/TrackPlot'
+import TrackMap from '@/components/TrackMap'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,7 +55,7 @@ export default async function TrackPage({
       {selected && (
         <div className="card">
           <div className="card-title">{selected.reportDate} の軌跡（記録点 {trackPoints.length}件）</div>
-          <TrackPlot
+          <TrackMap
             points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
             spots={spotList.map(s => ({ lat: s.latitude, lng: s.longitude, isAlertSpot: s.isAlertSpot }))}
           />

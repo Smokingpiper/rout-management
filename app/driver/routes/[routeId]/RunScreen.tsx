@@ -1,9 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import GoogleMap from '@/components/GoogleMap'
 
-type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean }
+type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number }
 type Report = { id: string; status: string; reportDate: string }
+
+function navUrl(lat: number, lng: number) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
+}
 
 const MIN_INTERVAL_MS = 15000 // GPS点を送る最短間隔
 
@@ -22,6 +27,7 @@ export default function RunScreen({
   const [gpsError, setGpsError] = useState<string | null>(null)
   const [pointCount, setPointCount] = useState(trackPointCount)
   const [acked, setAcked] = useState(new Set(ackedSpotIds))
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
   const lastSentAt = useRef(0)
 
   const trackingEnabled = report.status === 'in_progress'
@@ -35,6 +41,7 @@ export default function RunScreen({
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setGpsActive(true)
+        setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
         const now = Date.now()
         if (now - lastSentAt.current < MIN_INTERVAL_MS) return
         lastSentAt.current = now
@@ -86,6 +93,15 @@ export default function RunScreen({
         </div>
       )}
 
+      <div className="card">
+        <div className="card-title">マップ</div>
+        <GoogleMap
+          markers={spots.map(s => ({ lat: s.latitude, lng: s.longitude, alert: s.isAlertSpot }))}
+          currentLocation={currentLocation}
+          height={260}
+        />
+      </div>
+
       {alertSpots.length > 0 && (
         <div className="card">
           <div className="card-title">
@@ -93,8 +109,9 @@ export default function RunScreen({
             <span className="pill warn">残り{remainingAlerts}件</span>
           </div>
           {alertSpots.map(spot => (
-            <div className="spot-row" key={spot.id}>
+            <div className="spot-row" key={spot.id} style={{ flexWrap: 'wrap' }}>
               <span className="spot-address">{spot.address}</span>
+              <a className="btn sm" href={navUrl(spot.latitude, spot.longitude)} target="_blank" rel="noreferrer">📍 ナビ開始</a>
               {acked.has(spot.id) ? (
                 <span className="pill ok">確認済</span>
               ) : (

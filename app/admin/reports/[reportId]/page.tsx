@@ -2,7 +2,7 @@ import { db } from '@/db/client'
 import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import TrackPlot from '@/components/TrackPlot'
+import TrackMap from '@/components/TrackMap'
 import ApproveActions from './ApproveActions'
 
 export const dynamic = 'force-dynamic'
@@ -52,7 +52,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
 
       <div className="card">
         <div className="card-title">軌跡（参考）</div>
-        <TrackPlot
+        <TrackMap
           points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
           spots={spotList.map(s => ({ lat: s.latitude, lng: s.longitude, isAlertSpot: s.isAlertSpot }))}
         />
