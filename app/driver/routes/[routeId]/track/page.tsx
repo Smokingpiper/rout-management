@@ -2,7 +2,7 @@ import { db } from '@/db/client'
 import { routes, areas, dailyReports, routeTrackPoints, spots } from '@/db/schema'
 import { eq, asc, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import TrackPlot from './TrackPlot'
+import TrackPlot from '@/components/TrackPlot'
 
 export const dynamic = 'force-dynamic'
 
