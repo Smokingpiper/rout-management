@@ -1,16 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import GoogleMap from '@/components/GoogleMap'
+import { useGpsTracking, navUrl } from '@/lib/useGpsTracking'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number }
 type Report = { id: string; status: string; reportDate: string }
-
-function navUrl(lat: number, lng: number) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
-}
-
-const MIN_INTERVAL_MS = 15000 // GPS点を送る最短間隔
 
 export default function RunScreen({
   routeId, routeName, report, spots, ackedSpotIds, trackPointCount, wasteTypeName,
@@ -23,43 +18,9 @@ export default function RunScreen({
   trackPointCount: number
   wasteTypeName: string | null
 }) {
-  const [gpsActive, setGpsActive] = useState(false)
-  const [gpsError, setGpsError] = useState<string | null>(null)
-  const [pointCount, setPointCount] = useState(trackPointCount)
-  const [acked, setAcked] = useState(new Set(ackedSpotIds))
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const lastSentAt = useRef(0)
-
   const trackingEnabled = report.status === 'in_progress'
-
-  useEffect(() => {
-    if (!trackingEnabled) return
-    if (!('geolocation' in navigator)) {
-      setGpsError('この端末は位置情報に対応していません')
-      return
-    }
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setGpsActive(true)
-        setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        const now = Date.now()
-        if (now - lastSentAt.current < MIN_INTERVAL_MS) return
-        lastSentAt.current = now
-        fetch('/api/driver/track-points', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            dailyReportId: report.id,
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          }),
-        }).then(res => { if (res.ok) setPointCount(c => c + 1) })
-      },
-      (err) => setGpsError(err.message || '位置情報を取得できませんでした'),
-      { enableHighAccuracy: true, maximumAge: 10000 },
-    )
-    return () => navigator.geolocation.clearWatch(watchId)
-  }, [trackingEnabled, report.id])
+  const { gpsActive, gpsError, pointCount, currentLocation } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
+  const [acked, setAcked] = useState(new Set(ackedSpotIds))
 
   async function acknowledgeAlert(spotId: string) {
     const res = await fetch('/api/driver/alert-ack', {
@@ -72,6 +33,7 @@ export default function RunScreen({
 
   const alertSpots = spots.filter(s => s.isAlertSpot)
   const remainingAlerts = alertSpots.filter(s => !acked.has(s.id)).length
+  const firstSpot = spots[0]
 
   return (
     <>
@@ -91,6 +53,12 @@ export default function RunScreen({
         <div className="card">
           <span className="pill ok">本日の日報は提出済みです</span>
         </div>
+      )}
+
+      {trackingEnabled && firstSpot && (
+        <a className="btn primary" style={{ marginBottom: 16 }} href={`/driver/routes/${routeId}/spots/${firstSpot.id}`}>
+          🧭 巡回を開始（最初のスポットへ）
+        </a>
       )}
 
       <div className="card">
@@ -125,11 +93,11 @@ export default function RunScreen({
       <div className="card">
         <div className="card-title">スポット一覧（全{spots.length}件）</div>
         {spots.map(spot => (
-          <div className="spot-row" key={spot.id}>
+          <a className="spot-row" key={spot.id} href={`/driver/routes/${routeId}/spots/${spot.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
             <span className="spot-order">{spot.orderInRoute}</span>
             <span className="spot-address">{spot.address}</span>
             {spot.isAlertSpot && <span className="pill warn">要注意</span>}
-          </div>
+          </a>
         ))}
       </div>
 
