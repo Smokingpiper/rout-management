@@ -3,7 +3,7 @@
 // 必要な環境変数（コミットしない）: TARGET_URL, BASIC_AUTH_USER, BASIC_AUTH_PASSWORD, IMPORT_ADMIN_TOKEN
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import * as XLSX from 'xlsx'
+import XLSX from 'xlsx'
 
 const SOURCE_DIR = 'C:\\Users\\Smokingpiper1014\\Downloads\\saito_extract\\(有)斉藤商店回収エリア'
 const UNION_NAME = '杉並リサイクル協同組合'
