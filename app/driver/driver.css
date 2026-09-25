@@ -1,0 +1,86 @@
+:root {
+  --bg: #F5F7FC;
+  --bg-2: #FFFFFF;
+  --surface: #E8EDF7;
+  --border: #C8D3EC;
+  --text: #0F1829;
+  --text-2: #4A5578;
+  --text-3: #8896B8;
+  --accent: #3EA96B;
+  --accent-dim: #DDF2E6;
+  --accent-2: #4A7CF6;
+  --accent-2-dim: #D8E4FF;
+  --warn: #F59E0B;
+  --warn-dim: #FEF3C7;
+  --danger: #E5484D;
+  --danger-dim: #FBE0E1;
+  --nav-bg: #0F1829;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0B1020; --bg-2: #0F1829; --surface: #1A2540;
+    --border: #2D3E65; --text: #E8EDF7; --text-2: #9AADD4; --text-3: #566B9A;
+    --accent: #4FD188; --accent-dim: #0D2E1E; --accent-2: #6695FF; --accent-2-dim: #1A2A50;
+    --warn: #F59E0B; --warn-dim: #2D2008; --danger: #F27074; --danger-dim: #3A1518;
+    --nav-bg: #070D1A;
+  }
+}
+
+* { box-sizing: border-box; }
+
+.driver-body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.driver-topbar {
+  background: var(--nav-bg); color: #fff;
+  padding: 12px 18px; font-size: 13.5px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px;
+}
+.driver-topbar a { color: var(--nav-text, #C8D3EC); text-decoration: none; font-weight: 400; }
+
+.driver-main { max-width: 480px; margin: 0 auto; padding: 18px 16px 40px; }
+
+.breadcrumb { font-size: 12px; color: var(--text-3); margin-bottom: 6px; }
+.page-title { font-size: 19px; font-weight: 700; margin-bottom: 6px; }
+.page-desc { color: var(--text-2); font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
+
+.card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+.card-title { font-weight: 700; font-size: 13.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.route-item {
+  display: block; background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 10px; text-decoration: none; color: inherit;
+}
+.route-item .name { font-weight: 700; font-size: 14.5px; }
+.route-item .meta { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+.pill.ok { background: var(--accent-dim); color: var(--accent); }
+.pill.warn { background: var(--warn-dim); color: var(--warn); }
+.pill.muted { background: var(--surface); color: var(--text-3); }
+.pill.info { background: var(--accent-2-dim); color: var(--accent-2); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text-2); font-family: inherit; width: 100%; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn:disabled { opacity: .5; }
+.btn.sm { width: auto; padding: 7px 12px; font-size: 12.5px; }
+
+.spot-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.spot-row:last-child { border-bottom: none; }
+.spot-order { width: 22px; height: 22px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 10.5px; color: var(--text-2); flex-shrink: 0; }
+.spot-address { flex: 1; }
+
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 5px; font-weight: 600; }
+.field input, .field select, .field textarea { width: 100%; padding: 10px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; font-family: inherit; }
+.field .hint { font-size: 11.5px; color: var(--text-3); margin-top: 4px; }
+
+.gps-status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+.gps-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
+.gps-dot.active { background: var(--accent); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
