@@ -15,7 +15,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/admin', label: 'エリア一覧' },
       { href: '/admin/reports', label: '日報一覧・承認' },
-      { href: '/admin/users', label: 'ユーザー招待管理' },
+      { href: '/admin/users', label: 'ユーザー管理' },
     ],
   },
   {

@@ -13,10 +13,10 @@ export default async function RouteSpotsPage({
   params, searchParams,
 }: {
   params: Promise<{ routeId: string }>
-  searchParams: Promise<{ page?: string; q?: string; hasNote?: string; alertOnly?: string }>
+  searchParams: Promise<{ page?: string; q?: string; hasNote?: string; alertOnly?: string; driverId?: string }>
 }) {
   const { routeId } = await params
-  const { page: pageStr, q, hasNote, alertOnly } = await searchParams
+  const { page: pageStr, q, hasNote, alertOnly, driverId } = await searchParams
   const page = Math.max(1, Number(pageStr) || 1)
   const query = (q ?? '').trim()
   const hasNoteOnly = hasNote === '1'
@@ -30,11 +30,14 @@ export default async function RouteSpotsPage({
     db.select({ n: sql`1` }).from(spotNotes).where(and(eq(spotNotes.spotId, spots.id), ilike(spotNotes.note, `%${matchQuery}%`)))
   const hasAnyNote = () =>
     db.select({ n: sql`1` }).from(spotNotes).where(eq(spotNotes.spotId, spots.id))
+  const assignedToDriver = (userId: string) =>
+    db.select({ n: sql`1` }).from(spotAssignments).where(and(eq(spotAssignments.spotId, spots.id), eq(spotAssignments.userId, userId)))
 
   const conditions = [eq(spots.routeId, routeId)]
   if (query) conditions.push(or(ilike(spots.address, `%${query}%`), exists(noteMatches(query)))!)
   if (hasNoteOnly) conditions.push(exists(hasAnyNote()))
   if (alertSpotOnly) conditions.push(eq(spots.isAlertSpot, true))
+  if (driverId) conditions.push(exists(assignedToDriver(driverId)))
   const whereClause = and(...conditions)
 
   const [{ n: total }] = await db
@@ -74,6 +77,7 @@ export default async function RouteSpotsPage({
     ...(query ? { q: query } : {}),
     ...(hasNoteOnly ? { hasNote: '1' } : {}),
     ...(alertSpotOnly ? { alertOnly: '1' } : {}),
+    ...(driverId ? { driverId } : {}),
   }
 
   return (
@@ -94,8 +98,14 @@ export default async function RouteSpotsPage({
           <input type="checkbox" name="alertOnly" value="1" defaultChecked={alertSpotOnly} />
           要注意のみ
         </label>
+        <select className="text-input" style={{ flex: '1 1 180px' }} name="driverId" defaultValue={driverId ?? ''}>
+          <option value="">担当ドライバーで絞り込み…</option>
+          {driverList.map(d => (
+            <option key={d.id} value={d.id}>{d.name || d.email}</option>
+          ))}
+        </select>
         <button className="btn primary" type="submit">検索</button>
-        {(query || hasNoteOnly || alertSpotOnly) && <a className="btn" href={`/admin/routes/${routeId}`}>クリア</a>}
+        {(query || hasNoteOnly || alertSpotOnly || driverId) && <a className="btn" href={`/admin/routes/${routeId}`}>クリア</a>}
       </form>
 
       <details className="card" open>

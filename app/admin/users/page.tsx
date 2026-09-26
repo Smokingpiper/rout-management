@@ -21,7 +21,7 @@ export default async function AdminUsersPage() {
   return (
     <>
       <div className="breadcrumb">会社管理者向け</div>
-      <div className="page-title">ユーザー招待管理</div>
+      <div className="page-title">ユーザー管理</div>
       <div className="page-desc">
         ドライバーなどのアカウントを作成します。作成時に一時パスワードが発行されるので、そのままご本人にお伝えください
         （Google認証は今後導入予定です。現時点ではメールアドレスとパスワードでログインします）。
@@ -39,7 +39,7 @@ export default async function AdminUsersPage() {
                 <td>{u.name || '—'}</td>
                 <td>{ROLE_LABEL[u.role]}</td>
                 <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{u.createdAt.toISOString().slice(0, 10)}</td>
-                <td><a className="btn sm" href={`/admin/users/${u.id}/schedule`}>スケジュール設定</a></td>
+                <td><a className="btn sm" href={`/admin/users/${u.id}`}>詳細</a></td>
               </tr>
             ))}
             {userList.length === 0 && (
