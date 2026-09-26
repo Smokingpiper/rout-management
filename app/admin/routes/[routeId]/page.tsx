@@ -44,12 +44,8 @@ export default async function RouteSpotsPage({
   const notes = spotIds.length
     ? await db.select().from(spotNotes).where(inArray(spotNotes.spotId, spotIds))
     : []
-  const notesBySpot = new Map<string, string[]>()
-  for (const n of notes) {
-    const arr = notesBySpot.get(n.spotId) ?? []
-    arr.push(n.note)
-    notesBySpot.set(n.spotId, arr)
-  }
+  const noteBySpot = new Map<string, string>()
+  for (const n of notes) noteBySpot.set(n.spotId, n.note)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -80,7 +76,7 @@ export default async function RouteSpotsPage({
           </thead>
           <tbody>
             {spotList.map(spot => (
-              <SpotRow key={spot.id} spot={spot} notes={notesBySpot.get(spot.id) ?? []} />
+              <SpotRow key={spot.id} spot={spot} note={noteBySpot.get(spot.id) ?? ''} />
             ))}
             {spotList.length === 0 && (
               <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>該当するスポットがありません</td></tr>
