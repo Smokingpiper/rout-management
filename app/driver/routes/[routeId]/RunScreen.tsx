@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import LeafletMap from '@/components/LeafletMap'
 import { useGpsTracking } from '@/lib/useGpsTracking'
+import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
 import { buildChunkedNavUrls } from '@/lib/chunkedNav'
 import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
 import DriverSpotList from './DriverSpotList'
@@ -21,7 +22,9 @@ export default function RunScreen({
   trackPointCount: number
   wasteTypeName: string | null
 }) {
-  const trackingEnabled = report.status === 'in_progress'
+  const reportOpen = report.status === 'in_progress'
+  const { on: recordingOn, toggle: toggleRecording } = useGpsRecordingToggle(report.id)
+  const trackingEnabled = reportOpen && recordingOn
   const { gpsActive, gpsError, pointCount, currentLocation } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
   const [acked, setAcked] = useState(new Set(ackedSpotIds))
 
@@ -45,13 +48,27 @@ export default function RunScreen({
       <div className="page-title">{routeName}</div>
       <div className="page-desc">{report.reportDate} ・ {wasteTypeName ?? '品目未設定'}</div>
 
-      {trackingEnabled ? (
+      {reportOpen ? (
         <div className="card">
           <div className="gps-status">
             <span className={`gps-dot ${gpsActive ? 'active' : ''}`} />
-            {gpsError ? `GPS取得エラー: ${gpsError}` : gpsActive ? 'GPS記録中' : 'GPS位置情報を取得しています…'}
+            {recordingOn
+              ? (gpsError ? `GPS取得エラー: ${gpsError}` : gpsActive ? 'GPS記録中' : 'GPS位置情報を取得しています…')
+              : 'GPS記録は停止中です'}
             <span style={{ marginLeft: 'auto', color: 'var(--text-3)' }}>記録点数: {pointCount}</span>
           </div>
+          <button
+            className={`btn sm ${recordingOn ? '' : 'primary'}`}
+            style={{ marginTop: 8, width: '100%' }}
+            onClick={toggleRecording}
+          >
+            {recordingOn ? '⏸ GPS記録を停止する' : '▶ GPS記録を再開する'}
+          </button>
+          {!recordingOn && (
+            <p style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 6 }}>
+              停止中は移動経路が記録されません。休憩などで一時的に止める場合にご利用ください。
+            </p>
+          )}
         </div>
       ) : (
         <div className="card">
@@ -90,7 +107,7 @@ export default function RunScreen({
 
       <DriverSpotList routeId={routeId} spots={spots} />
 
-      {trackingEnabled && (
+      {reportOpen && (
         <details className="card">
           <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
             🔰 ナビが必要な方はこちら（区間ナビ・{navAppLabel(isApple)}）
@@ -117,9 +134,9 @@ export default function RunScreen({
         </details>
       )}
 
-      <div className="grid-cards" style={{ gridTemplateColumns: trackingEnabled ? '1fr 1fr' : '1fr' }}>
+      <div className="grid-cards" style={{ gridTemplateColumns: reportOpen ? '1fr 1fr' : '1fr' }}>
         <a className="btn" href={`/driver/routes/${routeId}/track`}>🛰 軌跡マップを見る</a>
-        {trackingEnabled && (
+        {reportOpen && (
           <a className="btn primary" href={`/driver/routes/${routeId}/submit`}>日報を提出する →</a>
         )}
       </div>

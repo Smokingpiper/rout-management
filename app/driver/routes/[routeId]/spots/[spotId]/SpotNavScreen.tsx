@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import LeafletMap from '@/components/LeafletMap'
 import { useGpsTracking } from '@/lib/useGpsTracking'
+import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
 import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number }
@@ -23,7 +24,9 @@ export default function SpotNavScreen({
   initiallyAcked: boolean
   trackPointCount: number
 }) {
-  const trackingEnabled = report.status === 'in_progress'
+  const reportOpen = report.status === 'in_progress'
+  const { on: recordingOn, toggle: toggleRecording } = useGpsRecordingToggle(report.id)
+  const trackingEnabled = reportOpen && recordingOn
   const { gpsActive, gpsError, pointCount, currentLocation } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
   const isApple = useIsApplePlatform()
   const [acked, setAcked] = useState(initiallyAcked)
@@ -94,11 +97,16 @@ export default function SpotNavScreen({
       <div className="breadcrumb"><a href={`/driver/routes/${routeId}`}>{routeName}</a> / スポット {index + 1} / {total}</div>
       <div className="page-title">{spot.address || `スポット #${spot.orderInRoute}`}</div>
       <div className="page-desc">
-        {trackingEnabled ? (
+        {reportOpen ? (
           <span className="gps-status">
             <span className={`gps-dot ${gpsActive ? 'active' : ''}`} />
-            {gpsError ? `GPS取得エラー: ${gpsError}` : gpsActive ? 'GPS記録中' : 'GPS取得中…'}
+            {recordingOn
+              ? (gpsError ? `GPS取得エラー: ${gpsError}` : gpsActive ? 'GPS記録中' : 'GPS取得中…')
+              : 'GPS記録は停止中です'}
             <span style={{ color: 'var(--text-3)' }}>（記録点数: {pointCount}）</span>
+            <button className="btn sm" style={{ marginLeft: 8 }} onClick={toggleRecording}>
+              {recordingOn ? '⏸ 停止' : '▶ 再開'}
+            </button>
           </span>
         ) : '本日の日報は提出済みです'}
       </div>
