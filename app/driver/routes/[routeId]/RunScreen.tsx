@@ -5,6 +5,7 @@ import LeafletMap from '@/components/LeafletMap'
 import { useGpsTracking } from '@/lib/useGpsTracking'
 import { buildChunkedNavUrls } from '@/lib/chunkedNav'
 import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
+import DriverSpotList from './DriverSpotList'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number; hasNote?: boolean }
 type Report = { id: string; status: string; reportDate: string }
@@ -87,17 +88,7 @@ export default function RunScreen({
         </div>
       )}
 
-      <div className="card">
-        <div className="card-title">スポット一覧（全{spots.length}件・タップで住所の詳細）</div>
-        {spots.map(spot => (
-          <a className="spot-row" key={spot.id} href={`/driver/routes/${routeId}/spots/${spot.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
-            <span className="spot-order">{spot.orderInRoute}</span>
-            <span className="spot-address">{spot.address}</span>
-            {spot.hasNote && <span title="備考あり">📝</span>}
-            {spot.isAlertSpot && <span className="pill warn">要注意</span>}
-          </a>
-        ))}
-      </div>
+      <DriverSpotList routeId={routeId} spots={spots} />
 
       {trackingEnabled && (
         <details className="card">

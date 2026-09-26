@@ -29,6 +29,12 @@ export default function SpotNavScreen({
   const [acked, setAcked] = useState(initiallyAcked)
   const [acking, setAcking] = useState(false)
 
+  const [isAlertSpot, setIsAlertSpot] = useState(spot.isAlertSpot)
+  const [savingAlert, setSavingAlert] = useState(false)
+  const [noteValue, setNoteValue] = useState(note ?? '')
+  const [savingNote, setSavingNote] = useState(false)
+  const [noteSaved, setNoteSaved] = useState(false)
+
   async function acknowledge() {
     setAcking(true)
     try {
@@ -40,6 +46,42 @@ export default function SpotNavScreen({
       if (res.ok) setAcked(true)
     } finally {
       setAcking(false)
+    }
+  }
+
+  async function toggleAlertSpot() {
+    const next = !isAlertSpot
+    setIsAlertSpot(next)
+    setSavingAlert(true)
+    try {
+      const res = await fetch(`/api/admin/spots/${spot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isAlertSpot: next }),
+      })
+      if (!res.ok) setIsAlertSpot(!next)
+    } finally {
+      setSavingAlert(false)
+    }
+  }
+
+  async function saveNote() {
+    setSavingNote(true)
+    setNoteSaved(false)
+    try {
+      const res = await fetch(`/api/admin/spots/${spot.id}/note`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: noteValue }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        setNoteValue(json.note ?? '')
+        setNoteSaved(true)
+        setTimeout(() => setNoteSaved(false), 2000)
+      }
+    } finally {
+      setSavingNote(false)
     }
   }
 
@@ -61,7 +103,7 @@ export default function SpotNavScreen({
         ) : '本日の日報は提出済みです'}
       </div>
 
-      {spot.isAlertSpot && (
+      {isAlertSpot && (
         <div className="card" style={{ background: 'var(--warn-dim)', borderColor: 'var(--warn)' }}>
           <div style={{ display: 'flex', gap: 10 }}>
             <span>⚠️</span>
@@ -73,13 +115,13 @@ export default function SpotNavScreen({
         </div>
       )}
 
-      {note && (
+      {noteValue && (
         <div className="card" style={{ background: 'var(--accent-dim)', borderColor: 'var(--accent)' }}>
           <div style={{ display: 'flex', gap: 10 }}>
             <span>📝</span>
             <div>
               <b style={{ color: 'var(--accent)' }}>備考</b><br />
-              {note}
+              {noteValue}
             </div>
           </div>
         </div>
@@ -88,7 +130,7 @@ export default function SpotNavScreen({
       <div className="card">
         <div className="card-title">
           {spot.address}
-          {spot.isAlertSpot && <span className="pill warn">要注意スポット</span>}
+          {isAlertSpot && <span className="pill warn">要注意スポット</span>}
         </div>
         <LeafletMap
           markers={[{ lat: spot.latitude, lng: spot.longitude, alert: spot.isAlertSpot }]}
@@ -99,7 +141,7 @@ export default function SpotNavScreen({
 
       <div className="grid-cards" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 16 }}>
         <a className="btn" href={navUrl(spot.latitude, spot.longitude, isApple)} target="_blank" rel="noreferrer">📍 {navAppLabel(isApple)}でナビ開始</a>
-        {spot.isAlertSpot ? (
+        {isAlertSpot ? (
           acked ? (
             <span className="btn" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'default', borderColor: 'var(--accent-dim)' }}>✓ 確認済み</span>
           ) : (
@@ -109,6 +151,29 @@ export default function SpotNavScreen({
           <span />
         )}
       </div>
+
+      <details className="card" style={{ marginBottom: 16 }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>✏️ 備考・要注意設定を編集する</summary>
+        <div style={{ marginTop: 12 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, marginBottom: 14 }}>
+            <input type="checkbox" checked={isAlertSpot} disabled={savingAlert} onChange={toggleAlertSpot} />
+            このスポットを要注意に設定する
+          </label>
+          <div className="field">
+            <label>備考</label>
+            <textarea
+              className="text-input"
+              style={{ width: '100%', minHeight: 80, resize: 'vertical' }}
+              value={noteValue}
+              onChange={e => setNoteValue(e.target.value)}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button className="btn primary" disabled={savingNote} onClick={saveNote}>備考を保存</button>
+            {noteSaved && <span className="pill ok">保存しました</span>}
+          </div>
+        </div>
+      </details>
 
       <div className="grid-cards" style={{ gridTemplateColumns: '1fr 1fr' }}>
         {prevSpotId ? (
