@@ -1,10 +1,17 @@
 import { db } from '@/db/client'
-import { spots, spotNotes } from '@/db/schema'
+import { spots, spotNotes, spotAssignments } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 
+const MAX_ASSIGNEES_PER_SPOT = 5
+
 export async function PATCH(request: Request) {
-  const body = await request.json() as { spotIds?: string[]; isAlertSpot?: boolean; appendNote?: string }
-  const { spotIds, isAlertSpot, appendNote } = body
+  const body = await request.json() as {
+    spotIds?: string[]
+    isAlertSpot?: boolean
+    appendNote?: string
+    addAssigneeUserId?: string
+  }
+  const { spotIds, isAlertSpot, appendNote, addAssigneeUserId } = body
 
   if (!spotIds || spotIds.length === 0) {
     return Response.json({ error: 'spotIds required' }, { status: 400 })
@@ -27,5 +34,23 @@ export async function PATCH(request: Request) {
     }
   }
 
-  return Response.json({ updated: spotIds.length })
+  let skippedFull = 0
+  if (addAssigneeUserId) {
+    const existing = await db.select().from(spotAssignments).where(inArray(spotAssignments.spotId, spotIds))
+    const countBySpot = new Map<string, number>()
+    const hasUserBySpot = new Set<string>()
+    for (const a of existing) {
+      countBySpot.set(a.spotId, (countBySpot.get(a.spotId) ?? 0) + 1)
+      if (a.userId === addAssigneeUserId) hasUserBySpot.add(a.spotId)
+    }
+    const toInsert: { spotId: string; userId: string }[] = []
+    for (const spotId of spotIds) {
+      if (hasUserBySpot.has(spotId)) continue
+      if ((countBySpot.get(spotId) ?? 0) >= MAX_ASSIGNEES_PER_SPOT) { skippedFull++; continue }
+      toInsert.push({ spotId, userId: addAssigneeUserId })
+    }
+    if (toInsert.length > 0) await db.insert(spotAssignments).values(toInsert)
+  }
+
+  return Response.json({ updated: spotIds.length, skippedFull })
 }

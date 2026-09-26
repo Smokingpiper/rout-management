@@ -11,16 +11,20 @@ type Spot = {
   longitude: number
   isAlertSpot: boolean
 }
+type Driver = { id: string; name: string | null; email: string | null }
 
 export default function SpotBulkTable({
-  routeId, spotList, noteBySpot,
+  routeId, spotList, noteBySpot, assigneeCountBySpot, driverList,
 }: {
   routeId: string
   spotList: Spot[]
   noteBySpot: Record<string, string>
+  assigneeCountBySpot: Record<string, number>
+  driverList: Driver[]
 }) {
   const [selected, setSelected] = useState(new Set<string>())
   const [appendNoteText, setAppendNoteText] = useState('')
+  const [assigneeUserId, setAssigneeUserId] = useState('')
   const [applying, setApplying] = useState(false)
 
   const allSelected = spotList.length > 0 && spotList.every(s => selected.has(s.id))
@@ -47,8 +51,13 @@ export default function SpotBulkTable({
         body: JSON.stringify({ spotIds: [...selected], ...body }),
       })
       if (res.ok) {
+        const json = await res.json()
+        if (json.skippedFull > 0) {
+          window.alert(`${json.skippedFull}件は担当が既に上限（5人）のためスキップしました。`)
+        }
         setSelected(new Set())
         setAppendNoteText('')
+        setAssigneeUserId('')
         window.location.reload()
       }
     } finally {
@@ -77,6 +86,24 @@ export default function SpotBulkTable({
           >
             備考を追記
           </button>
+          <select
+            className="text-input"
+            style={{ flex: '1 1 160px' }}
+            value={assigneeUserId}
+            onChange={e => setAssigneeUserId(e.target.value)}
+          >
+            <option value="">担当者を選択…</option>
+            {driverList.map(d => (
+              <option key={d.id} value={d.id}>{d.name || d.email}</option>
+            ))}
+          </select>
+          <button
+            className="btn sm primary"
+            disabled={applying || !assigneeUserId}
+            onClick={() => bulkPatch({ addAssigneeUserId: assigneeUserId })}
+          >
+            担当者に追加
+          </button>
         </div>
       )}
 
@@ -90,6 +117,7 @@ export default function SpotBulkTable({
               <th>緯度・経度</th>
               <th>備考</th>
               <th className="checkbox-cell">要注意</th>
+              <th>担当</th>
               <th></th>
             </tr>
           </thead>
@@ -99,11 +127,11 @@ export default function SpotBulkTable({
                 <td className="checkbox-cell">
                   <input type="checkbox" checked={selected.has(spot.id)} onChange={() => toggleOne(spot.id)} />
                 </td>
-                <SpotRow spot={spot} note={noteBySpot[spot.id] ?? ''} routeId={routeId} />
+                <SpotRow spot={spot} note={noteBySpot[spot.id] ?? ''} routeId={routeId} assigneeCount={assigneeCountBySpot[spot.id] ?? 0} />
               </tr>
             ))}
             {spotList.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>該当するスポットがありません</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>該当するスポットがありません</td></tr>
             )}
           </tbody>
         </table>

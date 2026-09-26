@@ -70,6 +70,7 @@ const STATEMENTS = [
     route_id text NOT NULL REFERENCES routes(id),
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE user_routes ADD COLUMN days_of_week jsonb NOT NULL DEFAULT '[]'`,
   `CREATE TABLE route_schedules (
     id text PRIMARY KEY,
     route_id text NOT NULL REFERENCES routes(id),
@@ -85,6 +86,12 @@ const STATEMENTS = [
     longitude double precision NOT NULL,
     is_alert_spot boolean NOT NULL DEFAULT false,
     order_in_route integer NOT NULL
+  )`,
+  `CREATE TABLE spot_assignments (
+    id text PRIMARY KEY,
+    spot_id text NOT NULL REFERENCES spots(id),
+    user_id text NOT NULL REFERENCES users(id),
+    created_at timestamptz NOT NULL DEFAULT now()
   )`,
   `CREATE TABLE spot_notes (
     id text PRIMARY KEY,

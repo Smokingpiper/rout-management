@@ -10,13 +10,18 @@ type Spot = {
   longitude: number
   isAlertSpot: boolean
 }
+type Driver = { id: string; name: string | null; email: string | null }
+
+const MAX_ASSIGNEES = 5
 
 export default function SpotDetailForm({
-  spot, initialNote, routeId,
+  spot, initialNote, routeId, driverList, initialAssignedUserIds,
 }: {
   spot: Spot
   initialNote: string
   routeId: string
+  driverList: Driver[]
+  initialAssignedUserIds: string[]
 }) {
   const [note, setNote] = useState(initialNote)
   const [savingNote, setSavingNote] = useState(false)
@@ -24,6 +29,11 @@ export default function SpotDetailForm({
 
   const [isAlertSpot, setIsAlertSpot] = useState(spot.isAlertSpot)
   const [savingAlert, setSavingAlert] = useState(false)
+
+  const [assignedUserIds, setAssignedUserIds] = useState(new Set(initialAssignedUserIds))
+  const [savingAssignees, setSavingAssignees] = useState(false)
+  const [assigneesSaved, setAssigneesSaved] = useState(false)
+  const [assigneesError, setAssigneesError] = useState<string | null>(null)
 
   async function saveNote() {
     setSavingNote(true)
@@ -61,6 +71,40 @@ export default function SpotDetailForm({
     }
   }
 
+  async function toggleAssignee(userId: string) {
+    const next = new Set(assignedUserIds)
+    if (next.has(userId)) {
+      next.delete(userId)
+    } else {
+      if (next.size >= MAX_ASSIGNEES) {
+        setAssigneesError(`担当は1スポットにつき最大${MAX_ASSIGNEES}人までです`)
+        return
+      }
+      next.add(userId)
+    }
+    setAssigneesError(null)
+    setAssignedUserIds(next)
+    setAssigneesSaved(false)
+    setSavingAssignees(true)
+    try {
+      const res = await fetch(`/api/admin/spots/${spot.id}/assignees`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: [...next] }),
+      })
+      if (res.ok) {
+        setAssigneesSaved(true)
+        setTimeout(() => setAssigneesSaved(false), 2000)
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setAssigneesError(json.error ?? '保存に失敗しました')
+        setAssignedUserIds(assignedUserIds)
+      }
+    } finally {
+      setSavingAssignees(false)
+    }
+  }
+
   return (
     <>
       <div className="card">
@@ -92,6 +136,29 @@ export default function SpotDetailForm({
           <button className="btn primary" disabled={savingNote} onClick={saveNote}>保存</button>
           {noteSaved && <span className="pill ok">保存しました</span>}
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">
+          担当ドライバー
+          <span className="pill info">{assignedUserIds.size}/{MAX_ASSIGNEES}人</span>
+        </div>
+        {driverList.length === 0 && (
+          <p style={{ fontSize: 12.5, color: 'var(--text-3)' }}>まだユーザーが登録されていません（ユーザー招待管理から作成できます）</p>
+        )}
+        {driverList.map(d => (
+          <label key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, padding: '4px 0' }}>
+            <input
+              type="checkbox"
+              checked={assignedUserIds.has(d.id)}
+              disabled={savingAssignees}
+              onChange={() => toggleAssignee(d.id)}
+            />
+            {d.name || d.email}
+          </label>
+        ))}
+        {assigneesError && <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 8 }}>{assigneesError}</p>}
+        {assigneesSaved && <span className="pill ok" style={{ marginTop: 8, display: 'inline-block' }}>保存しました</span>}
       </div>
 
       <a className="btn" href={`/admin/routes/${routeId}`}>← スポット一覧に戻る</a>

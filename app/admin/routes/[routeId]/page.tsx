@@ -1,7 +1,8 @@
 import { db } from '@/db/client'
-import { routes, areas, spots, spotNotes } from '@/db/schema'
+import { routes, areas, spots, spotNotes, spotAssignments, users } from '@/db/schema'
 import { and, asc, eq, exists, ilike, inArray, or, sql } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
+import { getPrimaryCompany } from '@/lib/company'
 import SpotBulkTable from './SpotBulkTable'
 
 export const dynamic = 'force-dynamic'
@@ -56,6 +57,17 @@ export default async function RouteSpotsPage({
   const noteBySpot: Record<string, string> = {}
   for (const n of notes) noteBySpot[n.spotId] = n.note
 
+  const assignments = spotIds.length
+    ? await db.select().from(spotAssignments).where(inArray(spotAssignments.spotId, spotIds))
+    : []
+  const assigneeCountBySpot: Record<string, number> = {}
+  for (const a of assignments) assigneeCountBySpot[a.spotId] = (assigneeCountBySpot[a.spotId] ?? 0) + 1
+
+  const company = await getPrimaryCompany()
+  const driverList = company
+    ? await db.select().from(users).where(eq(users.companyId, company.id))
+    : []
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const baseParams = {
@@ -91,7 +103,13 @@ export default async function RouteSpotsPage({
           スポット一覧（{total.toLocaleString()}件・タップで折りたたみ）
         </summary>
         <div style={{ marginTop: 12 }}>
-          <SpotBulkTable routeId={routeId} spotList={spotList} noteBySpot={noteBySpot} />
+          <SpotBulkTable
+            routeId={routeId}
+            spotList={spotList}
+            noteBySpot={noteBySpot}
+            assigneeCountBySpot={assigneeCountBySpot}
+            driverList={driverList.map(d => ({ id: d.id, name: d.name, email: d.email }))}
+          />
         </div>
       </details>
 

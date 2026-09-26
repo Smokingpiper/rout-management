@@ -30,7 +30,7 @@ export default async function AdminUsersPage() {
       <div className="card">
         <table>
           <thead>
-            <tr><th>メールアドレス</th><th>氏名</th><th>ロール</th><th>登録日</th></tr>
+            <tr><th>メールアドレス</th><th>氏名</th><th>ロール</th><th>登録日</th><th></th></tr>
           </thead>
           <tbody>
             {userList.map(u => (
@@ -39,10 +39,11 @@ export default async function AdminUsersPage() {
                 <td>{u.name || '—'}</td>
                 <td>{ROLE_LABEL[u.role]}</td>
                 <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{u.createdAt.toISOString().slice(0, 10)}</td>
+                <td><a className="btn sm" href={`/admin/users/${u.id}/schedule`}>スケジュール設定</a></td>
               </tr>
             ))}
             {userList.length === 0 && (
-              <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>まだユーザーが登録されていません</td></tr>
+              <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>まだユーザーが登録されていません</td></tr>
             )}
           </tbody>
         </table>

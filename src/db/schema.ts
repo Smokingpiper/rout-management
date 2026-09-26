@@ -61,12 +61,14 @@ export const routes = pgTable('routes', {
   scheduleRule:      jsonb('schedule_rule'),
 })
 
-// ── ドライバーの担当ルート（多対多） ───────────────────────
+// ── ドライバーの担当ルート（多対多、曜日指定つき） ───────────────
 export const userRoutes = pgTable('user_routes', {
-  id:        id(),
-  userId:    text('user_id').notNull().references(() => users.id),
-  routeId:   text('route_id').notNull().references(() => routes.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  id:         id(),
+  userId:     text('user_id').notNull().references(() => users.id),
+  routeId:    text('route_id').notNull().references(() => routes.id),
+  // 曜日の配列（0=日〜6=土、JSの Date.getDay() と同じ規則）。空配列は「このルートは担当だが曜日未設定」を表す
+  daysOfWeek: jsonb('days_of_week').notNull().default('[]'),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
 })
 
 // ── ルートのスケジュール実体 ─────────────────────────────
@@ -88,6 +90,14 @@ export const spots = pgTable('spots', {
   longitude:     doublePrecision('longitude').notNull(),
   isAlertSpot:   boolean('is_alert_spot').default(false).notNull(),
   orderInRoute:  integer('order_in_route').notNull(),
+})
+
+// ── スポットの担当ドライバー（多対多、1スポットにつき最大5人まで。上限はアプリ側でチェック） ─
+export const spotAssignments = pgTable('spot_assignments', {
+  id:        id(),
+  spotId:    text('spot_id').notNull().references(() => spots.id),
+  userId:    text('user_id').notNull().references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 // ── スポットメモ ────────────────────────────────────────
