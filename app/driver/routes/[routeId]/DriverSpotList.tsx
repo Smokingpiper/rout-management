@@ -61,9 +61,9 @@ export default function DriverSpotList({ routeId, spots: initialSpots }: { route
   }
 
   return (
-    <details className="card" open>
+    <details className="card">
       <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
-        スポット一覧（{filtered.length === spots.length ? `全${spots.length}件` : `${filtered.length}/${spots.length}件`}・タップで折りたたみ）
+        スポット一覧（{filtered.length === spots.length ? `全${spots.length}件` : `${filtered.length}/${spots.length}件`}・タップで開く）
       </summary>
 
       <div style={{ marginTop: 12 }}>
