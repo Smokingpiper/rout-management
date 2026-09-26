@@ -1,12 +1,20 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
+import { useSearchParams } from 'next/navigation'
+
+const HOME_BY_ROLE: Record<string, string> = {
+  driver: '/driver',
+  company_admin: '/admin',
+  union_admin: '/union/companies',
+}
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const searchParams = useSearchParams()
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -23,7 +31,12 @@ export default function LoginForm() {
         setError(json.error ?? 'ログインに失敗しました')
         return
       }
-      window.location.href = json.mustChangePassword ? '/account/password' : '/driver'
+      if (json.mustChangePassword) {
+        window.location.href = '/account/password'
+        return
+      }
+      const next = searchParams.get('next')
+      window.location.href = next || HOME_BY_ROLE[json.role] || '/driver'
     } finally {
       setSubmitting(false)
     }

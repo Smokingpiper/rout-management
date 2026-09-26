@@ -62,7 +62,7 @@ export default function RunScreen({
             style={{ marginTop: 8, width: '100%' }}
             onClick={toggleRecording}
           >
-            {recordingOn ? '⏸ GPS記録を停止する' : '▶ GPS記録を再開する'}
+            {recordingOn ? '⏸ 収集終了' : '▶ 収集開始'}
           </button>
           {!recordingOn && (
             <p style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 6 }}>

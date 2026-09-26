@@ -7,7 +7,9 @@ const NAV_GROUPS = [
   {
     label: 'ドライバー向け',
     items: [
-      { href: '/driver', label: 'ルート一覧' },
+      { href: '/driver', label: '今日のルート' },
+      { href: '/driver/my-routes', label: '担当ルート一覧' },
+      { href: '/driver/reports', label: '日報一覧' },
     ],
   },
   {
@@ -38,6 +40,11 @@ export default function Sidebar() {
     setTheme(t => (t === 'dark' ? 'light' : 'dark'))
   }
 
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/login'
+  }
+
   function isActive(href: string) {
     if (href === '/admin' || href === '/driver') return pathname === href
     return pathname.startsWith(href)
@@ -63,6 +70,7 @@ export default function Sidebar() {
       <div className="app-toggle" onClick={toggleTheme}>🌓 ライト/ダーク切替</div>
       <a className="app-toggle" href="/account/password">🔑 パスワード変更</a>
       <a className="app-toggle" href="/mockup.html">📐 画面モックアップへ</a>
+      <div className="app-toggle" onClick={logout}>🚪 ログアウト</div>
       <div id="annotation-controls-slot" />
     </nav>
   )

@@ -64,7 +64,7 @@ export default async function TrackPage({
             <div className="card-title">{selected.reportDate} の軌跡（記録点 {trackPoints.length}件）</div>
             <TrackMap
               points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
-              spots={spotList.map(s => ({ lat: s.latitude, lng: s.longitude, isAlertSpot: s.isAlertSpot }))}
+              spots={spotList.map(s => ({ id: s.id, lat: s.latitude, lng: s.longitude, isAlertSpot: s.isAlertSpot, orderInRoute: s.orderInRoute }))}
             />
           </div>
         </>

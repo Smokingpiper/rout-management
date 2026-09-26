@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 
-export type MapMarker = { lat: number; lng: number; alert?: boolean }
+export type MapMarker = { lat: number; lng: number; alert?: boolean; missed?: boolean }
 export type LatLng = { lat: number; lng: number }
 
 // MapTilerの256pxラスタタイル。512px版(streets-v4/{z}/{x}/{y}.png)を使う場合は
@@ -48,13 +48,23 @@ export default function LeafletMap({
       const boundsPoints: [number, number][] = []
 
       for (const m of markers) {
-        const marker = L.circleMarker([m.lat, m.lng], {
-          radius: 7,
-          color: '#fff',
-          weight: 1.5,
-          fillColor: m.alert ? '#F59E0B' : '#3EA96B',
-          fillOpacity: 1,
-        }).addTo(map)
+        const marker = m.missed
+          ? L.marker([m.lat, m.lng], {
+              icon: L.divIcon({
+                html: '⚠️',
+                className: 'missed-spot-icon',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+              }),
+            })
+          : L.circleMarker([m.lat, m.lng], {
+              radius: 7,
+              color: '#fff',
+              weight: 1.5,
+              fillColor: m.alert ? '#F59E0B' : '#3EA96B',
+              fillOpacity: 1,
+            })
+        marker.addTo(map)
         overlaysRef.current.push(marker)
         boundsPoints.push([m.lat, m.lng])
       }

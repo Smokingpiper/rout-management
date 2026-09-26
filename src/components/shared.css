@@ -163,6 +163,8 @@ input[type="text"], input[type="email"], input[type="number"], input[type="date"
 .gps-dot.active { background: var(--accent); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 
+.missed-spot-icon { background: none; border: none; font-size: 16px; line-height: 1; text-align: center; }
+
 /* Annotations */
 .annot-badge {
   min-width: 16px; height: 16px; padding: 0 5px; border-radius: 100px;

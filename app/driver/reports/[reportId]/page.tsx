@@ -4,9 +4,8 @@ import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import TrackMap from '@/components/TrackMap'
 import MissedSpotsCard from '@/components/MissedSpotsCard'
-import { findMissedSpots } from '@/lib/missedSpots'
-import ApproveActions from './ApproveActions'
 import PhotoViewer from '@/components/PhotoViewer'
+import { findMissedSpots } from '@/lib/missedSpots'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +15,7 @@ const STATUS_LABEL: Record<string, string> = {
   approved: '承認済み',
 }
 
-export default async function ReportDetailPage({ params }: { params: Promise<{ reportId: string }> }) {
+export default async function DriverReportDetailPage({ params }: { params: Promise<{ reportId: string }> }) {
   const { reportId } = await params
   const [report] = await db.select().from(dailyReports).where(eq(dailyReports.id, reportId))
   if (!report) notFound()
@@ -36,7 +35,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
 
   return (
     <>
-      <div className="breadcrumb"><a href="/admin/reports">日報一覧</a> / {report.reportDate}</div>
+      <div className="breadcrumb"><a href="/driver/reports">日報一覧</a> / {report.reportDate}</div>
       <div className="page-title">{area?.name} — {route?.name}</div>
       <div className="page-desc">{report.reportDate} ・ {wasteType?.name ?? '品目未設定'} ・ <span className="pill muted">{STATUS_LABEL[report.status]}</span></div>
 
@@ -70,8 +69,6 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
           spots={spotList.map(s => ({ id: s.id, lat: s.latitude, lng: s.longitude, isAlertSpot: s.isAlertSpot, orderInRoute: s.orderInRoute }))}
         />
       </div>
-
-      <ApproveActions reportId={report.id} status={report.status} />
     </>
   )
 }

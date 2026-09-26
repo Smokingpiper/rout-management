@@ -105,7 +105,7 @@ export default function SpotNavScreen({
               : 'GPS記録は停止中です'}
             <span style={{ color: 'var(--text-3)' }}>（記録点数: {pointCount}）</span>
             <button className="btn sm" style={{ marginLeft: 8 }} onClick={toggleRecording}>
-              {recordingOn ? '⏸ 停止' : '▶ 再開'}
+              {recordingOn ? '⏸ 収集終了' : '▶ 収集開始'}
             </button>
           </span>
         ) : '本日の日報は提出済みです'}
