@@ -176,14 +176,25 @@ export const paymentEvaluations = pgTable('payment_evaluations', {
 
 // ── ユーザー ────────────────────────────────────────────
 export const users = pgTable('users', {
-  id:           id(),
-  unionId:      text('union_id').references(() => unions.id),
-  companyId:    text('company_id').references(() => companies.id),
-  name:         text('name'),
-  googleEmail:  text('google_email').unique(),
-  phoneNumber:  text('phone_number'),
-  role:         userRoleEnum('role').notNull(),
-  createdAt:    timestamp('created_at').defaultNow().notNull(),
+  id:                 id(),
+  unionId:            text('union_id').references(() => unions.id),
+  companyId:          text('company_id').references(() => companies.id),
+  name:               text('name'),
+  email:              text('email').unique(),
+  phoneNumber:        text('phone_number'),
+  role:               userRoleEnum('role').notNull(),
+  // 簡易パスワード認証（Google認証は後日導入予定）。招待時に発行した一時パスワードのハッシュを保持する
+  passwordHash:       text('password_hash'),
+  mustChangePassword: boolean('must_change_password').default(true).notNull(),
+  createdAt:          timestamp('created_at').defaultNow().notNull(),
+})
+
+// ── ログインセッション ────────────────────────────────────
+export const sessions = pgTable('sessions', {
+  id:        id(),
+  userId:    text('user_id').notNull().references(() => users.id),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 // ── 招待制の許可リスト ────────────────────────────────────

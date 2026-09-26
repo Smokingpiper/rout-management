@@ -164,6 +164,17 @@ const STATEMENTS = [
     status allowed_email_status NOT NULL DEFAULT 'invited',
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
+
+  // 簡易パスワード認証（Google認証は後日）。招待でuser作成→一時パスワード発行→本人が変更する運用
+  `ALTER TABLE users RENAME COLUMN google_email TO email`,
+  `ALTER TABLE users ADD COLUMN password_hash text`,
+  `ALTER TABLE users ADD COLUMN must_change_password boolean NOT NULL DEFAULT true`,
+  `CREATE TABLE sessions (
+    id text PRIMARY KEY,
+    user_id text NOT NULL REFERENCES users(id),
+    expires_at timestamptz NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
 ]
 
 export async function POST(request: Request) {

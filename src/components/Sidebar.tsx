@@ -15,13 +15,13 @@ const NAV_GROUPS = [
     items: [
       { href: '/admin', label: 'エリア一覧' },
       { href: '/admin/reports', label: '日報一覧・承認' },
+      { href: '/admin/users', label: 'ユーザー招待管理' },
     ],
   },
   {
     label: '協会管理者向け',
     items: [
       { href: '/union/companies', label: '会社登録' },
-      { href: '/union/invites', label: 'ユーザー招待管理' },
     ],
   },
 ]
@@ -61,6 +61,7 @@ export default function Sidebar() {
       ))}
 
       <div className="app-toggle" onClick={toggleTheme}>🌓 ライト/ダーク切替</div>
+      <a className="app-toggle" href="/account/password">🔑 パスワード変更</a>
       <a className="app-toggle" href="/mockup.html">📐 画面モックアップへ</a>
       <div id="annotation-controls-slot" />
     </nav>
