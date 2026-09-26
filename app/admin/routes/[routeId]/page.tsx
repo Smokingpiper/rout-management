@@ -1,8 +1,8 @@
 import { db } from '@/db/client'
 import { routes, areas, spots, spotNotes } from '@/db/schema'
-import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, exists, ilike, inArray, or, sql } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import SpotRow from './SpotRow'
+import SpotBulkTable from './SpotBulkTable'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,20 +12,29 @@ export default async function RouteSpotsPage({
   params, searchParams,
 }: {
   params: Promise<{ routeId: string }>
-  searchParams: Promise<{ page?: string; q?: string }>
+  searchParams: Promise<{ page?: string; q?: string; hasNote?: string; alertOnly?: string }>
 }) {
   const { routeId } = await params
-  const { page: pageStr, q } = await searchParams
+  const { page: pageStr, q, hasNote, alertOnly } = await searchParams
   const page = Math.max(1, Number(pageStr) || 1)
   const query = (q ?? '').trim()
+  const hasNoteOnly = hasNote === '1'
+  const alertSpotOnly = alertOnly === '1'
 
   const [route] = await db.select().from(routes).where(eq(routes.id, routeId))
   if (!route) notFound()
   const [area] = await db.select().from(areas).where(eq(areas.id, route.areaId))
 
-  const whereClause = query
-    ? and(eq(spots.routeId, routeId), ilike(spots.address, `%${query}%`))
-    : eq(spots.routeId, routeId)
+  const noteMatches = (matchQuery: string) =>
+    db.select({ n: sql`1` }).from(spotNotes).where(and(eq(spotNotes.spotId, spots.id), ilike(spotNotes.note, `%${matchQuery}%`)))
+  const hasAnyNote = () =>
+    db.select({ n: sql`1` }).from(spotNotes).where(eq(spotNotes.spotId, spots.id))
+
+  const conditions = [eq(spots.routeId, routeId)]
+  if (query) conditions.push(or(ilike(spots.address, `%${query}%`), exists(noteMatches(query)))!)
+  if (hasNoteOnly) conditions.push(exists(hasAnyNote()))
+  if (alertSpotOnly) conditions.push(eq(spots.isAlertSpot, true))
+  const whereClause = and(...conditions)
 
   const [{ n: total }] = await db
     .select({ n: sql<number>`count(*)`.mapWith(Number) })
@@ -44,10 +53,16 @@ export default async function RouteSpotsPage({
   const notes = spotIds.length
     ? await db.select().from(spotNotes).where(inArray(spotNotes.spotId, spotIds))
     : []
-  const noteBySpot = new Map<string, string>()
-  for (const n of notes) noteBySpot.set(n.spotId, n.note)
+  const noteBySpot: Record<string, string> = {}
+  for (const n of notes) noteBySpot[n.spotId] = n.note
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const baseParams = {
+    ...(query ? { q: query } : {}),
+    ...(hasNoteOnly ? { hasNote: '1' } : {}),
+    ...(alertSpotOnly ? { alertOnly: '1' } : {}),
+  }
 
   return (
     <>
@@ -55,40 +70,35 @@ export default async function RouteSpotsPage({
         <a href="/admin">エリア一覧</a> / <a href={`/admin/areas/${route.areaId}`}>{area?.name}</a> / {route.name}
       </div>
       <div className="page-title">{route.name} のスポット</div>
-      <div className="page-desc">全{total.toLocaleString()}件。住所で検索できます。要注意フラグはチェックですぐ保存されます。</div>
+      <div className="page-desc">全{total.toLocaleString()}件。住所・備考で検索できます。要注意フラグはチェックですぐ保存されます。</div>
 
-      <form method="get" className="card" style={{ display: 'flex', gap: 10 }}>
-        <input className="search-input" style={{ flex: 1 }} type="text" name="q" defaultValue={query} placeholder="住所で検索（例: 上荻１丁目）" />
+      <form method="get" className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+        <input className="search-input" style={{ flex: '1 1 240px' }} type="text" name="q" defaultValue={query} placeholder="住所・備考で検索（例: 上荻１丁目）" />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }}>
+          <input type="checkbox" name="hasNote" value="1" defaultChecked={hasNoteOnly} />
+          備考ありのみ
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }}>
+          <input type="checkbox" name="alertOnly" value="1" defaultChecked={alertSpotOnly} />
+          要注意のみ
+        </label>
         <button className="btn primary" type="submit">検索</button>
-        {query && <a className="btn" href={`/admin/routes/${routeId}`}>クリア</a>}
+        {(query || hasNoteOnly || alertSpotOnly) && <a className="btn" href={`/admin/routes/${routeId}`}>クリア</a>}
       </form>
 
-      <div className="card">
-        <table>
-          <thead>
-            <tr>
-              <th>No.</th>
-              <th>住所</th>
-              <th>緯度・経度</th>
-              <th>備考</th>
-              <th className="checkbox-cell">要注意</th>
-            </tr>
-          </thead>
-          <tbody>
-            {spotList.map(spot => (
-              <SpotRow key={spot.id} spot={spot} note={noteBySpot.get(spot.id) ?? ''} />
-            ))}
-            {spotList.length === 0 && (
-              <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>該当するスポットがありません</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <details className="card" open>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
+          スポット一覧（{total.toLocaleString()}件・タップで折りたたみ）
+        </summary>
+        <div style={{ marginTop: 12 }}>
+          <SpotBulkTable routeId={routeId} spotList={spotList} noteBySpot={noteBySpot} />
+        </div>
+      </details>
 
       <div className="pagination">
         <span>{page} / {totalPages} ページ</span>
-        {page > 1 && <a className="btn" href={`?${new URLSearchParams({ ...(query ? { q: query } : {}), page: String(page - 1) })}`}>← 前へ</a>}
-        {page < totalPages && <a className="btn" href={`?${new URLSearchParams({ ...(query ? { q: query } : {}), page: String(page + 1) })}`}>次へ →</a>}
+        {page > 1 && <a className="btn" href={`?${new URLSearchParams({ ...baseParams, page: String(page - 1) })}`}>← 前へ</a>}
+        {page < totalPages && <a className="btn" href={`?${new URLSearchParams({ ...baseParams, page: String(page + 1) })}`}>次へ →</a>}
       </div>
     </>
   )

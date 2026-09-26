@@ -11,7 +11,7 @@ type Spot = {
   isAlertSpot: boolean
 }
 
-export default function SpotRow({ spot, note }: { spot: Spot; note: string }) {
+export default function SpotRow({ spot, note, routeId }: { spot: Spot; note: string; routeId: string }) {
   const [address, setAddress] = useState(spot.address ?? '')
   const [editingAddress, setEditingAddress] = useState(false)
   const [savingAddress, setSavingAddress] = useState(false)
@@ -72,7 +72,7 @@ export default function SpotRow({ spot, note }: { spot: Spot; note: string }) {
   }
 
   return (
-    <tr>
+    <>
       <td style={{ color: 'var(--text-3)', fontFamily: 'monospace' }}>{spot.orderInRoute}</td>
       <td>
         {editingAddress ? (
@@ -106,6 +106,9 @@ export default function SpotRow({ spot, note }: { spot: Spot; note: string }) {
       <td className="checkbox-cell">
         <input type="checkbox" checked={isAlertSpot} disabled={saving} onChange={toggleAlert} />
       </td>
-    </tr>
+      <td>
+        <a className="btn sm" href={`/admin/routes/${routeId}/spots/${spot.id}`}>詳細</a>
+      </td>
+    </>
   )
 }
