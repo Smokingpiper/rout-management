@@ -6,6 +6,7 @@ import { useGpsTracking } from '@/lib/useGpsTracking'
 import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
 import { buildChunkedNavUrls } from '@/lib/chunkedNav'
 import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
+import { distanceMeters } from '@/lib/missedSpots'
 import DriverSpotList from './DriverSpotList'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number; hasNote?: boolean }
@@ -41,6 +42,19 @@ export default function RunScreen({
   const remainingAlerts = alertSpots.filter(s => !acked.has(s.id)).length
   const isApple = useIsApplePlatform()
   const navChunks = useMemo(() => buildChunkedNavUrls(spots, isApple), [spots, isApple])
+
+  // 現在地に最も近いスポットが属する区間を「今いる区間」とみなす
+  const currentChunkIndex = useMemo(() => {
+    if (!currentLocation || spots.length === 0) return null
+    let nearestOrder = -1
+    let nearestDist = Infinity
+    for (const s of spots) {
+      const d = distanceMeters({ lat: s.latitude, lng: s.longitude }, currentLocation)
+      if (d < nearestDist) { nearestDist = d; nearestOrder = s.orderInRoute }
+    }
+    const chunk = navChunks.find(c => nearestOrder >= c.startOrder && nearestOrder <= c.endOrder)
+    return chunk ? chunk.chunkIndex : null
+  }, [currentLocation, spots, navChunks])
 
   return (
     <>
@@ -111,25 +125,34 @@ export default function RunScreen({
         <details className="card">
           <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
             🔰 ナビが必要な方はこちら（区間ナビ・{navAppLabel(isApple)}）
+            {currentChunkIndex != null && (
+              <span className="pill ok" style={{ marginLeft: 8 }}>📍 現在地は区間{currentChunkIndex + 1}</span>
+            )}
           </summary>
           <p style={{ fontSize: 12.5, color: 'var(--text-2)', margin: '10px 0', lineHeight: 1.6 }}>
             {navAppLabel(isApple)}は1回のナビに入れられる経由地の数に上限があるため、入力順のまま{navChunks.length}区間に分けています。
             区間を1つ終えたら、次の区間のボタンをタップしてください（現在地からその区間の最後のスポットまで自動でナビされます）。
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {navChunks.map(chunk => (
-              <a
-                key={chunk.chunkIndex}
-                className="btn primary"
-                style={{ justifyContent: 'space-between' }}
-                href={chunk.url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <span>📍 区間{chunk.chunkIndex + 1}（{chunk.startOrder}〜{chunk.endOrder}件目）</span>
-                <span>ナビ開始 →</span>
-              </a>
-            ))}
+            {navChunks.map(chunk => {
+              const isCurrent = chunk.chunkIndex === currentChunkIndex
+              return (
+                <a
+                  key={chunk.chunkIndex}
+                  className={isCurrent ? 'btn' : 'btn primary'}
+                  style={{
+                    justifyContent: 'space-between',
+                    ...(isCurrent ? { background: 'var(--accent)', color: '#fff', border: '2px solid var(--accent)' } : {}),
+                  }}
+                  href={chunk.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span>{isCurrent ? '📍✅' : '📍'} 区間{chunk.chunkIndex + 1}（{chunk.startOrder}〜{chunk.endOrder}件目）{isCurrent ? '・現在地' : ''}</span>
+                  <span>ナビ開始 →</span>
+                </a>
+              )
+            })}
           </div>
         </details>
       )}
