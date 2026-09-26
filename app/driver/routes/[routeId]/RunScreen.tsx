@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import GoogleMap from '@/components/GoogleMap'
+import LeafletMap from '@/components/LeafletMap'
 import { useGpsTracking, navUrl } from '@/lib/useGpsTracking'
 import { buildChunkedNavUrls } from '@/lib/chunkedNav'
 
@@ -58,7 +58,7 @@ export default function RunScreen({
 
       <div className="card">
         <div className="card-title">マップ</div>
-        <GoogleMap
+        <LeafletMap
           markers={spots.map(s => ({ lat: s.latitude, lng: s.longitude, alert: s.isAlertSpot }))}
           currentLocation={currentLocation}
           height={260}

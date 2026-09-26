@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import GoogleMap from '@/components/GoogleMap'
+import LeafletMap from '@/components/LeafletMap'
 import { useGpsTracking, navUrl } from '@/lib/useGpsTracking'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number }
@@ -88,7 +88,7 @@ export default function SpotNavScreen({
           {spot.address}
           {spot.isAlertSpot && <span className="pill warn">要注意スポット</span>}
         </div>
-        <GoogleMap
+        <LeafletMap
           markers={[{ lat: spot.latitude, lng: spot.longitude, alert: spot.isAlertSpot }]}
           currentLocation={currentLocation}
           height={240}
