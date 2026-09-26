@@ -40,6 +40,9 @@ export default function LeafletMap({
           attribution: ATTRIBUTION,
           maxZoom: 20,
         }).addTo(mapRef.current)
+        ;(window as any).__leafletMap = mapRef.current
+        mapRef.current.on('zoomend', () => console.log('[LeafletMap] zoomend, zoom=', mapRef.current.getZoom()))
+        mapRef.current.on('zoomstart', () => console.log('[LeafletMap] zoomstart'))
       }
       const map = mapRef.current
 
