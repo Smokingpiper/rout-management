@@ -118,5 +118,23 @@ export default function LeafletMap({
   if (!apiKey) return null
   if (error) return <div style={{ padding: 12, fontSize: 12.5, color: 'var(--danger)' }}>{error}</div>
 
-  return <div ref={containerRef} style={{ width: '100%', height, borderRadius: 10, border: '1px solid var(--border)' }} />
+  return (
+    <div style={{ position: 'relative', width: '100%', height }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%', borderRadius: 10, border: '1px solid var(--border)' }} />
+      {focusLatLng && (
+        <>
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', width: 28, height: 2,
+            background: '#E5484D', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 500,
+            boxShadow: '0 0 2px rgba(0,0,0,0.6)',
+          }} />
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', width: 2, height: 28,
+            background: '#E5484D', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 500,
+            boxShadow: '0 0 2px rgba(0,0,0,0.6)',
+          }} />
+        </>
+      )}
+    </div>
+  )
 }
