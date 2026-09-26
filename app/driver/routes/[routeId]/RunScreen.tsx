@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import LeafletMap from '@/components/LeafletMap'
-import { useGpsTracking, navUrl } from '@/lib/useGpsTracking'
+import { useGpsTracking } from '@/lib/useGpsTracking'
 import { buildChunkedNavUrls } from '@/lib/chunkedNav'
+import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number; hasNote?: boolean }
 type Report = { id: string; status: string; reportDate: string }
@@ -34,7 +35,8 @@ export default function RunScreen({
 
   const alertSpots = spots.filter(s => s.isAlertSpot)
   const remainingAlerts = alertSpots.filter(s => !acked.has(s.id)).length
-  const navChunks = useMemo(() => buildChunkedNavUrls(spots), [spots])
+  const isApple = useIsApplePlatform()
+  const navChunks = useMemo(() => buildChunkedNavUrls(spots, isApple), [spots, isApple])
 
   return (
     <>
@@ -74,7 +76,7 @@ export default function RunScreen({
           {alertSpots.map(spot => (
             <div className="spot-row" key={spot.id} style={{ flexWrap: 'wrap' }}>
               <span className="spot-address">{spot.address}</span>
-              <a className="btn sm" href={navUrl(spot.latitude, spot.longitude)} target="_blank" rel="noreferrer">📍 ナビ開始</a>
+              <a className="btn sm" href={navUrl(spot.latitude, spot.longitude, isApple)} target="_blank" rel="noreferrer">📍 ナビ開始</a>
               {acked.has(spot.id) ? (
                 <span className="pill ok">確認済</span>
               ) : (
@@ -100,10 +102,10 @@ export default function RunScreen({
       {trackingEnabled && (
         <details className="card">
           <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
-            🔰 ナビが必要な方はこちら（区間ナビ・Google Maps）
+            🔰 ナビが必要な方はこちら（区間ナビ・{navAppLabel(isApple)}）
           </summary>
           <p style={{ fontSize: 12.5, color: 'var(--text-2)', margin: '10px 0', lineHeight: 1.6 }}>
-            Google Mapsは1回のナビに入れられる経由地の数に上限があるため、入力順のまま{navChunks.length}区間に分けています。
+            {navAppLabel(isApple)}は1回のナビに入れられる経由地の数に上限があるため、入力順のまま{navChunks.length}区間に分けています。
             区間を1つ終えたら、次の区間のボタンをタップしてください（現在地からその区間の最後のスポットまで自動でナビされます）。
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

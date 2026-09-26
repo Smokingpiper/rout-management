@@ -42,7 +42,3 @@ export function useGpsTracking(dailyReportId: string, enabled: boolean, initialC
 
   return { gpsActive, gpsError, pointCount, currentLocation }
 }
-
-export function navUrl(lat: number, lng: number) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
-}

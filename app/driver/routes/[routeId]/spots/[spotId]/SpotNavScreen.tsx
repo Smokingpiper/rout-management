@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import LeafletMap from '@/components/LeafletMap'
-import { useGpsTracking, navUrl } from '@/lib/useGpsTracking'
+import { useGpsTracking } from '@/lib/useGpsTracking'
+import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number }
 type Report = { id: string; status: string; reportDate: string }
@@ -24,6 +25,7 @@ export default function SpotNavScreen({
 }) {
   const trackingEnabled = report.status === 'in_progress'
   const { gpsActive, gpsError, pointCount, currentLocation } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
+  const isApple = useIsApplePlatform()
   const [acked, setAcked] = useState(initiallyAcked)
   const [acking, setAcking] = useState(false)
 
@@ -96,7 +98,7 @@ export default function SpotNavScreen({
       </div>
 
       <div className="grid-cards" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 16 }}>
-        <a className="btn" href={navUrl(spot.latitude, spot.longitude)} target="_blank" rel="noreferrer">📍 Google Mapsでナビ開始</a>
+        <a className="btn" href={navUrl(spot.latitude, spot.longitude, isApple)} target="_blank" rel="noreferrer">📍 {navAppLabel(isApple)}でナビ開始</a>
         {spot.isAlertSpot ? (
           acked ? (
             <span className="btn" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'default', borderColor: 'var(--accent-dim)' }}>✓ 確認済み</span>
