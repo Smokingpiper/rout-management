@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { routes, areas, spots, spotAlertAcknowledgments, routeTrackPoints } from '@/db/schema'
+import { routes, areas, spots, spotNotes, spotAlertAcknowledgments, routeTrackPoints } from '@/db/schema'
 import { eq, and, asc, sql } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { getOrCreateTodaysReport } from '@/lib/daily-report'
@@ -36,11 +36,15 @@ export default async function SpotNavPage({ params }: { params: Promise<{ routeI
     .from(routeTrackPoints)
     .where(eq(routeTrackPoints.dailyReportId, report.id))
 
+  const notes = await db.select().from(spotNotes).where(eq(spotNotes.spotId, spot.id))
+  const note = notes.map(n => n.note).join(' / ') || null
+
   return (
     <SpotNavScreen
       routeId={routeId}
       routeName={`${area?.name ?? ''} — ${route.name}`}
       spot={spot}
+      note={note}
       index={index}
       total={spotList.length}
       prevSpotId={prevSpot?.id ?? null}

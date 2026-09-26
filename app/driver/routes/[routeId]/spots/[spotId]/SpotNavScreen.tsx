@@ -8,11 +8,12 @@ type Spot = { id: string; orderInRoute: number; address: string | null; isAlertS
 type Report = { id: string; status: string; reportDate: string }
 
 export default function SpotNavScreen({
-  routeId, routeName, spot, index, total, prevSpotId, nextSpotId, report, initiallyAcked, trackPointCount,
+  routeId, routeName, spot, note, index, total, prevSpotId, nextSpotId, report, initiallyAcked, trackPointCount,
 }: {
   routeId: string
   routeName: string
   spot: Spot
+  note: string | null
   index: number
   total: number
   prevSpotId: string | null
@@ -65,6 +66,18 @@ export default function SpotNavScreen({
             <div>
               <b style={{ color: 'var(--warn)' }}>要注意スポットです。</b><br />
               到達時は分別状況などを確認してください。
+            </div>
+          </div>
+        </div>
+      )}
+
+      {note && (
+        <div className="card" style={{ background: 'var(--accent-dim)', borderColor: 'var(--accent)' }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <span>📝</span>
+            <div>
+              <b style={{ color: 'var(--accent)' }}>備考</b><br />
+              {note}
             </div>
           </div>
         </div>

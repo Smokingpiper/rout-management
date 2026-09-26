@@ -5,7 +5,7 @@ import GoogleMap from '@/components/GoogleMap'
 import { useGpsTracking, navUrl } from '@/lib/useGpsTracking'
 import { buildChunkedNavUrls } from '@/lib/chunkedNav'
 
-type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number }
+type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number; hasNote?: boolean }
 type Report = { id: string; status: string; reportDate: string }
 
 export default function RunScreen({
@@ -116,6 +116,7 @@ export default function RunScreen({
           <a className="spot-row" key={spot.id} href={`/driver/routes/${routeId}/spots/${spot.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
             <span className="spot-order">{spot.orderInRoute}</span>
             <span className="spot-address">{spot.address}</span>
+            {spot.hasNote && <span title="備考あり">📝</span>}
             {spot.isAlertSpot && <span className="pill warn">要注意</span>}
           </a>
         ))}
