@@ -2,9 +2,7 @@ import { db } from '@/db/client'
 import { routes, areas, dailyReports, routeTrackPoints, spots } from '@/db/schema'
 import { eq, asc, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import TrackMap from '@/components/TrackMap'
-import MissedSpotsCard from '@/components/MissedSpotsCard'
-import { findMissedSpots } from '@/lib/missedSpots'
+import ReportTrackPanel from '@/components/ReportTrackPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,19 +53,10 @@ export default async function TrackPage({
       </div>
 
       {selected && (
-        <>
-          <MissedSpotsCard
-            missed={findMissedSpots(spotList, trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude })))}
-            totalSpots={spotList.length}
-          />
-          <div className="card">
-            <div className="card-title">{selected.reportDate} の軌跡（記録点 {trackPoints.length}件）</div>
-            <TrackMap
-              points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
-              spots={spotList.map(s => ({ id: s.id, lat: s.latitude, lng: s.longitude, isAlertSpot: s.isAlertSpot, orderInRoute: s.orderInRoute }))}
-            />
-          </div>
-        </>
+        <ReportTrackPanel
+          points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
+          spots={spotList}
+        />
       )}
     </>
   )

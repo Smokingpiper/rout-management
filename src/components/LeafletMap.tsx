@@ -12,12 +12,13 @@ const TILE_URL = (key: string) => `https://api.maptiler.com/maps/streets-v4/256/
 const ATTRIBUTION = '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank" rel="noreferrer">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors'
 
 export default function LeafletMap({
-  markers, path, height = 300, currentLocation,
+  markers, path, height = 300, currentLocation, focusLatLng,
 }: {
   markers: MapMarker[]
   path?: LatLng[]
   height?: number
   currentLocation?: LatLng | null
+  focusLatLng?: LatLng | null
 }) {
   const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY
   const containerRef = useRef<HTMLDivElement>(null)
@@ -98,6 +99,12 @@ export default function LeafletMap({
 
     return () => { cancelled = true }
   }, [apiKey, JSON.stringify(markers), JSON.stringify(path), JSON.stringify(currentLocation)])
+
+  useEffect(() => {
+    if (!apiKey || !mapRef.current || !focusLatLng) return
+    mapRef.current.setView([focusLatLng.lat, focusLatLng.lng], 18, { animate: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey, JSON.stringify(focusLatLng)])
 
   useEffect(() => {
     return () => {

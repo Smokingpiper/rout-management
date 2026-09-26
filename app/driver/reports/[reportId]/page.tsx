@@ -2,10 +2,8 @@ import { db } from '@/db/client'
 import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import TrackMap from '@/components/TrackMap'
-import MissedSpotsCard from '@/components/MissedSpotsCard'
+import ReportTrackPanel from '@/components/ReportTrackPanel'
 import PhotoViewer from '@/components/PhotoViewer'
-import { findMissedSpots } from '@/lib/missedSpots'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,18 +55,10 @@ export default async function DriverReportDetailPage({ params }: { params: Promi
         <PhotoViewer reportId={report.id} hasReportPhoto={!!report.reportPhotoUrl} hasReceiptPhoto={!!report.receiptPhotoUrl} />
       </div>
 
-      <MissedSpotsCard
-        missed={findMissedSpots(spotList, trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude })))}
-        totalSpots={spotList.length}
+      <ReportTrackPanel
+        points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
+        spots={spotList}
       />
-
-      <div className="card">
-        <div className="card-title">軌跡（参考）</div>
-        <TrackMap
-          points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
-          spots={spotList.map(s => ({ id: s.id, lat: s.latitude, lng: s.longitude, isAlertSpot: s.isAlertSpot, orderInRoute: s.orderInRoute }))}
-        />
-      </div>
     </>
   )
 }
