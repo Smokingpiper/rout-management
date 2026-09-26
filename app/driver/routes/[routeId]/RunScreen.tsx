@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import GoogleMap from '@/components/GoogleMap'
 import { useGpsTracking, navUrl } from '@/lib/useGpsTracking'
+import { buildChunkedNavUrls } from '@/lib/chunkedNav'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number }
 type Report = { id: string; status: string; reportDate: string }
@@ -33,7 +34,7 @@ export default function RunScreen({
 
   const alertSpots = spots.filter(s => s.isAlertSpot)
   const remainingAlerts = alertSpots.filter(s => !acked.has(s.id)).length
-  const firstSpot = spots[0]
+  const navChunks = useMemo(() => buildChunkedNavUrls(spots), [spots])
 
   return (
     <>
@@ -55,10 +56,29 @@ export default function RunScreen({
         </div>
       )}
 
-      {trackingEnabled && firstSpot && (
-        <a className="btn primary" style={{ marginBottom: 16 }} href={`/driver/routes/${routeId}/spots/${firstSpot.id}`}>
-          🧭 巡回を開始（最初のスポットへ）
-        </a>
+      {trackingEnabled && (
+        <div className="card">
+          <div className="card-title">🧭 区間ナビ（Google Maps）</div>
+          <p style={{ fontSize: 12.5, color: 'var(--text-2)', marginBottom: 10, lineHeight: 1.6 }}>
+            Google Mapsは1回のナビに入れられる経由地の数に上限があるため、入力順のまま{navChunks.length}区間に分けています。
+            区間を1つ終えたら、次の区間のボタンをタップしてください（現在地からその区間の最後のスポットまで自動でナビされます）。
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {navChunks.map(chunk => (
+              <a
+                key={chunk.chunkIndex}
+                className="btn primary"
+                style={{ justifyContent: 'space-between' }}
+                href={chunk.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span>📍 区間{chunk.chunkIndex + 1}（{chunk.startOrder}〜{chunk.endOrder}件目）</span>
+                <span>ナビ開始 →</span>
+              </a>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="card">
@@ -91,7 +111,7 @@ export default function RunScreen({
       )}
 
       <div className="card">
-        <div className="card-title">スポット一覧（全{spots.length}件）</div>
+        <div className="card-title">スポット一覧（全{spots.length}件・タップで住所の詳細）</div>
         {spots.map(spot => (
           <a className="spot-row" key={spot.id} href={`/driver/routes/${routeId}/spots/${spot.id}`} style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
             <span className="spot-order">{spot.orderInRoute}</span>
