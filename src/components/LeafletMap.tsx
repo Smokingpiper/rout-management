@@ -101,8 +101,11 @@ export default function LeafletMap({
   }, [apiKey, JSON.stringify(markers), JSON.stringify(path), JSON.stringify(currentLocation)])
 
   useEffect(() => {
+    console.log('[LeafletMap] focus effect fired', { apiKey: !!apiKey, hasMap: !!mapRef.current, focusLatLng })
     if (!apiKey || !mapRef.current || !focusLatLng) return
+    console.log('[LeafletMap] calling setView', focusLatLng, 'currentZoom=', mapRef.current.getZoom())
     mapRef.current.setView([focusLatLng.lat, focusLatLng.lng], 18, { animate: true })
+    console.log('[LeafletMap] after setView, zoom=', mapRef.current.getZoom())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey, JSON.stringify(focusLatLng)])
 
