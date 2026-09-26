@@ -56,31 +56,6 @@ export default function RunScreen({
         </div>
       )}
 
-      {trackingEnabled && (
-        <div className="card">
-          <div className="card-title">🧭 区間ナビ（Google Maps）</div>
-          <p style={{ fontSize: 12.5, color: 'var(--text-2)', marginBottom: 10, lineHeight: 1.6 }}>
-            Google Mapsは1回のナビに入れられる経由地の数に上限があるため、入力順のまま{navChunks.length}区間に分けています。
-            区間を1つ終えたら、次の区間のボタンをタップしてください（現在地からその区間の最後のスポットまで自動でナビされます）。
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {navChunks.map(chunk => (
-              <a
-                key={chunk.chunkIndex}
-                className="btn primary"
-                style={{ justifyContent: 'space-between' }}
-                href={chunk.url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <span>📍 区間{chunk.chunkIndex + 1}（{chunk.startOrder}〜{chunk.endOrder}件目）</span>
-                <span>ナビ開始 →</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="card">
         <div className="card-title">マップ</div>
         <GoogleMap
@@ -122,11 +97,39 @@ export default function RunScreen({
         ))}
       </div>
 
-      {trackingEnabled ? (
-        <a className="btn primary" href={`/driver/routes/${routeId}/submit`}>日報を提出する →</a>
-      ) : (
-        <a className="btn" href={`/driver/routes/${routeId}/track`}>軌跡マップを見る</a>
+      {trackingEnabled && (
+        <details className="card">
+          <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
+            🔰 ナビが必要な方はこちら（区間ナビ・Google Maps）
+          </summary>
+          <p style={{ fontSize: 12.5, color: 'var(--text-2)', margin: '10px 0', lineHeight: 1.6 }}>
+            Google Mapsは1回のナビに入れられる経由地の数に上限があるため、入力順のまま{navChunks.length}区間に分けています。
+            区間を1つ終えたら、次の区間のボタンをタップしてください（現在地からその区間の最後のスポットまで自動でナビされます）。
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {navChunks.map(chunk => (
+              <a
+                key={chunk.chunkIndex}
+                className="btn primary"
+                style={{ justifyContent: 'space-between' }}
+                href={chunk.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span>📍 区間{chunk.chunkIndex + 1}（{chunk.startOrder}〜{chunk.endOrder}件目）</span>
+                <span>ナビ開始 →</span>
+              </a>
+            ))}
+          </div>
+        </details>
       )}
+
+      <div className="grid-cards" style={{ gridTemplateColumns: trackingEnabled ? '1fr 1fr' : '1fr' }}>
+        <a className="btn" href={`/driver/routes/${routeId}/track`}>🛰 軌跡マップを見る</a>
+        {trackingEnabled && (
+          <a className="btn primary" href={`/driver/routes/${routeId}/submit`}>日報を提出する →</a>
+        )}
+      </div>
     </>
   )
 }

@@ -3,6 +3,8 @@ import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotA
 import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import TrackMap from '@/components/TrackMap'
+import MissedSpotsCard from '@/components/MissedSpotsCard'
+import { findMissedSpots } from '@/lib/missedSpots'
 import ApproveActions from './ApproveActions'
 import PhotoViewer from './PhotoViewer'
 
@@ -55,6 +57,11 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
         <div className="card-title">添付写真</div>
         <PhotoViewer reportId={report.id} hasReportPhoto={!!report.reportPhotoUrl} hasReceiptPhoto={!!report.receiptPhotoUrl} />
       </div>
+
+      <MissedSpotsCard
+        missed={findMissedSpots(spotList, trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude })))}
+        totalSpots={spotList.length}
+      />
 
       <div className="card">
         <div className="card-title">軌跡（参考）</div>
