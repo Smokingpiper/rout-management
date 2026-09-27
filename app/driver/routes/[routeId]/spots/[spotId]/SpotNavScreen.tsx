@@ -4,6 +4,7 @@ import { useState } from 'react'
 import LeafletMap from '@/components/LeafletMap'
 import { useGpsTracking } from '@/lib/useGpsTracking'
 import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
+import { useRouteLine } from '@/lib/useRouteLine'
 import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number }
@@ -28,6 +29,7 @@ export default function SpotNavScreen({
   const { on: recordingOn, toggle: toggleRecording } = useGpsRecordingToggle(report.id)
   const trackingEnabled = reportOpen && recordingOn
   const { gpsActive, gpsError, pointCount, currentLocation, backgrounded } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
+  const { routeLine } = useRouteLine(currentLocation, { lat: spot.latitude, lng: spot.longitude })
   const isApple = useIsApplePlatform()
   const [acked, setAcked] = useState(initiallyAcked)
   const [acking, setAcking] = useState(false)
@@ -143,12 +145,16 @@ export default function SpotNavScreen({
         <LeafletMap
           markers={[{ lat: spot.latitude, lng: spot.longitude, alert: spot.isAlertSpot }]}
           currentLocation={currentLocation}
-          height={240}
+          path={routeLine ?? undefined}
+          height={280}
         />
+        <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 6 }}>
+          青い線は現在地からの参考ルートです（画面はこのまま開いたままでOK。アプリを切り替えるとGPS記録が一時停止します）
+        </div>
       </div>
 
       <div className="grid-cards" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 16 }}>
-        <a className="btn" href={navUrl(spot.latitude, spot.longitude, isApple)} target="_blank" rel="noreferrer">📍 {navAppLabel(isApple)}でナビ開始</a>
+        <a className="btn sm" style={{ color: 'var(--text-3)' }} href={navUrl(spot.latitude, spot.longitude, isApple)} target="_blank" rel="noreferrer">🧭 外部ナビアプリを開く（{navAppLabel(isApple)}）</a>
         {isAlertSpot ? (
           acked ? (
             <span className="btn" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'default', borderColor: 'var(--accent-dim)' }}>✓ 確認済み</span>
