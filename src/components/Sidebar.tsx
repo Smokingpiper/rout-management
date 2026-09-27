@@ -32,10 +32,20 @@ const NAV_GROUPS = [
 export default function Sidebar() {
   const pathname = usePathname()
   const [theme, setTheme] = useState<'light' | 'dark' | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     if (theme) document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [menuOpen])
 
   function toggleTheme() {
     setTheme(t => (t === 'dark' ? 'light' : 'dark'))
@@ -52,27 +62,38 @@ export default function Sidebar() {
   }
 
   return (
-    <nav className="app-sidebar">
-      <h1>🗑 ゴミ収支管理</h1>
-      <span className="env-badge">実データ版</span>
+    <>
+      <div className="app-topbar">
+        <button className="hamburger-btn" aria-label="メニューを開く" onClick={() => setMenuOpen(o => !o)}>
+          {menuOpen ? '✕' : '☰'}
+        </button>
+        <span className="app-topbar-title">🗑 ゴミ収支管理</span>
+      </div>
 
-      {NAV_GROUPS.map(group => (
-        <div key={group.label}>
-          <div className="group-label">{group.label}</div>
-          {group.items.map(item => (
-            <a key={item.href} href={item.href} className={`nav-item ${isActive(item.href) ? 'active' : ''}`}>
-              {item.label}
-              <span className="annot-badge" data-badge-for={item.href} />
-            </a>
-          ))}
-        </div>
-      ))}
+      {menuOpen && <div className="sidebar-overlay" onClick={() => setMenuOpen(false)} />}
 
-      <div className="app-toggle" onClick={toggleTheme}>🌓 ライト/ダーク切替</div>
-      <a className="app-toggle" href="/account/password">🔑 パスワード変更</a>
-      <a className="app-toggle" href="/mockup.html">📐 画面モックアップへ</a>
-      <div className="app-toggle" onClick={logout}>🚪 ログアウト</div>
-      <div id="annotation-controls-slot" />
-    </nav>
+      <nav className={`app-sidebar ${menuOpen ? 'open' : ''}`}>
+        <h1>🗑 ゴミ収支管理</h1>
+        <span className="env-badge">実データ版</span>
+
+        {NAV_GROUPS.map(group => (
+          <div key={group.label}>
+            <div className="group-label">{group.label}</div>
+            {group.items.map(item => (
+              <a key={item.href} href={item.href} className={`nav-item ${isActive(item.href) ? 'active' : ''}`}>
+                {item.label}
+                <span className="annot-badge" data-badge-for={item.href} />
+              </a>
+            ))}
+          </div>
+        ))}
+
+        <div className="app-toggle" onClick={toggleTheme}>🌓 ライト/ダーク切替</div>
+        <a className="app-toggle" href="/account/password">🔑 パスワード変更</a>
+        <a className="app-toggle" href="/mockup.html">📐 画面モックアップへ</a>
+        <div className="app-toggle" onClick={logout}>🚪 ログアウト</div>
+        <div id="annotation-controls-slot" />
+      </nav>
+    </>
   )
 }
