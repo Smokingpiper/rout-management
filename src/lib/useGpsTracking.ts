@@ -9,6 +9,7 @@ export function useGpsTracking(dailyReportId: string, enabled: boolean, initialC
   const [gpsError, setGpsError] = useState<string | null>(null)
   const [pointCount, setPointCount] = useState(initialCount)
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [backgrounded, setBackgrounded] = useState(false)
   const lastSentAt = useRef(0)
 
   useEffect(() => {
@@ -17,28 +18,50 @@ export function useGpsTracking(dailyReportId: string, enabled: boolean, initialC
       setGpsError('この端末は位置情報に対応していません')
       return
     }
+
+    function sendPoint(lat: number, lng: number, force: boolean) {
+      setCurrentLocation({ lat, lng })
+      const now = Date.now()
+      if (!force && now - lastSentAt.current < MIN_INTERVAL_MS) return
+      lastSentAt.current = now
+      fetch('/api/driver/track-points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dailyReportId, latitude: lat, longitude: lng }),
+      }).then(res => { if (res.ok) setPointCount(c => c + 1) })
+    }
+
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setGpsActive(true)
-        setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        const now = Date.now()
-        if (now - lastSentAt.current < MIN_INTERVAL_MS) return
-        lastSentAt.current = now
-        fetch('/api/driver/track-points', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            dailyReportId,
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          }),
-        }).then(res => { if (res.ok) setPointCount(c => c + 1) })
+        sendPoint(pos.coords.latitude, pos.coords.longitude, false)
       },
       (err) => setGpsError(err.message || '位置情報を取得できませんでした'),
       { enableHighAccuracy: true, maximumAge: 10000 },
     )
-    return () => navigator.geolocation.clearWatch(watchId)
+
+    // ナビアプリ（Google/Apple Maps）を開くとブラウザがバックグラウンドになり、
+    // 端末によっては watchPosition が止まる。画面に戻った瞬間に現在地を取り直すことで、
+    // 記録の空白期間をできるだけ短くする（完全なバックグラウンド記録はWebアプリでは不可）
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        setBackgrounded(true)
+        return
+      }
+      setBackgrounded(false)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => sendPoint(pos.coords.latitude, pos.coords.longitude, true),
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 5000 },
+      )
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [enabled, dailyReportId])
 
-  return { gpsActive, gpsError, pointCount, currentLocation }
+  return { gpsActive, gpsError, pointCount, currentLocation, backgrounded }
 }

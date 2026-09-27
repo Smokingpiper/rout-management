@@ -27,7 +27,7 @@ export default function SpotNavScreen({
   const reportOpen = report.status === 'in_progress'
   const { on: recordingOn, toggle: toggleRecording } = useGpsRecordingToggle(report.id)
   const trackingEnabled = reportOpen && recordingOn
-  const { gpsActive, gpsError, pointCount, currentLocation } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
+  const { gpsActive, gpsError, pointCount, currentLocation, backgrounded } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
   const isApple = useIsApplePlatform()
   const [acked, setAcked] = useState(initiallyAcked)
   const [acking, setAcking] = useState(false)
@@ -99,9 +99,9 @@ export default function SpotNavScreen({
       <div className="page-desc">
         {reportOpen ? (
           <span className="gps-status">
-            <span className={`gps-dot ${gpsActive ? 'active' : ''}`} />
+            <span className={`gps-dot ${gpsActive && !backgrounded ? 'active' : ''}`} />
             {recordingOn
-              ? (gpsError ? `GPS取得エラー: ${gpsError}` : gpsActive ? 'GPS記録中' : 'GPS取得中…')
+              ? (backgrounded ? 'ナビアプリ表示中はGPS記録が一時停止します' : gpsError ? `GPS取得エラー: ${gpsError}` : gpsActive ? 'GPS記録中' : 'GPS取得中…')
               : 'GPS記録は停止中です'}
             <span style={{ color: 'var(--text-3)' }}>（記録点数: {pointCount}）</span>
             <button className="btn sm" style={{ marginLeft: 8 }} onClick={toggleRecording}>

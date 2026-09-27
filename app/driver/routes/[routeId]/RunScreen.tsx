@@ -26,7 +26,7 @@ export default function RunScreen({
   const reportOpen = report.status === 'in_progress'
   const { on: recordingOn, toggle: toggleRecording } = useGpsRecordingToggle(report.id)
   const trackingEnabled = reportOpen && recordingOn
-  const { gpsActive, gpsError, pointCount, currentLocation } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
+  const { gpsActive, gpsError, pointCount, currentLocation, backgrounded } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
   const [acked, setAcked] = useState(new Set(ackedSpotIds))
 
   async function acknowledgeAlert(spotId: string) {
@@ -65,9 +65,9 @@ export default function RunScreen({
       {reportOpen ? (
         <div className="card">
           <div className="gps-status">
-            <span className={`gps-dot ${gpsActive ? 'active' : ''}`} />
+            <span className={`gps-dot ${gpsActive && !backgrounded ? 'active' : ''}`} />
             {recordingOn
-              ? (gpsError ? `GPS取得エラー: ${gpsError}` : gpsActive ? 'GPS記録中' : 'GPS位置情報を取得しています…')
+              ? (backgrounded ? 'ナビアプリ表示中はGPS記録が一時停止します' : gpsError ? `GPS取得エラー: ${gpsError}` : gpsActive ? 'GPS記録中' : 'GPS位置情報を取得しています…')
               : 'GPS記録は停止中です'}
             <span style={{ marginLeft: 'auto', color: 'var(--text-3)' }}>記録点数: {pointCount}</span>
           </div>
