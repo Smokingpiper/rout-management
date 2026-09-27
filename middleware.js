@@ -4,7 +4,7 @@ import { sessions } from "@/db/schema";
 import { and, eq, gt } from "drizzle-orm";
 
 // ログインを必須にするパス（それ以外の管理系APIやログイン画面自体は対象外）
-const PROTECTED_PREFIXES = ["/admin", "/driver", "/union", "/account"];
+const PROTECTED_PREFIXES = ["/admin", "/driver", "/union", "/account", "/help"];
 
 function isProtectedPath(pathname) {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));

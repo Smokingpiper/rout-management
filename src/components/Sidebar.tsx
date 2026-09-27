@@ -89,6 +89,7 @@ export default function Sidebar() {
         ))}
 
         <div className="app-toggle" onClick={toggleTheme}>🌓 ライト/ダーク切替</div>
+        <a className="app-toggle" href="/help">📖 使い方</a>
         <a className="app-toggle" href="/account/password">🔑 パスワード変更</a>
         <a className="app-toggle" href="/mockup.html">📐 画面モックアップへ</a>
         <div className="app-toggle" onClick={logout}>🚪 ログアウト</div>
