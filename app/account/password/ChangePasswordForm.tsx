@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 
-export default function ChangePasswordForm({ requireCurrent }: { requireCurrent: boolean }) {
+export default function ChangePasswordForm({ requireCurrent, homeHref }: { requireCurrent: boolean; homeHref: string }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -36,7 +36,12 @@ export default function ChangePasswordForm({ requireCurrent }: { requireCurrent:
   }
 
   if (done) {
-    return <span className="pill ok">パスワードを変更しました</span>
+    return (
+      <div>
+        <span className="pill ok">パスワードを変更しました</span>
+        <a className="btn primary" href={homeHref} style={{ display: 'block', width: '100%', marginTop: 16 }}>アプリを開く →</a>
+      </div>
+    )
   }
 
   return (
