@@ -3,6 +3,8 @@ import { routes, areas, spots, spotNotes, spotAlertAcknowledgments, routeTrackPo
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { getOrCreateTodaysReport } from '@/lib/daily-report'
+import { getCurrentUser } from '@/lib/auth'
+import { filterSpotsForDriver } from '@/lib/driverSpots'
 import RunScreen from './RunScreen'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +17,9 @@ export default async function DriverRoutePage({ params }: { params: Promise<{ ro
 
   const report = await getOrCreateTodaysReport(routeId)
 
-  const spotList = await db.select().from(spots).where(eq(spots.routeId, routeId)).orderBy(spots.orderInRoute)
+  const allSpots = await db.select().from(spots).where(eq(spots.routeId, routeId)).orderBy(spots.orderInRoute)
+  const user = await getCurrentUser()
+  const spotList = user ? await filterSpotsForDriver(allSpots, user.id) : allSpots
   const alertSpotIds = spotList.filter(s => s.isAlertSpot).map(s => s.id)
 
   const spotIds = spotList.map(s => s.id)

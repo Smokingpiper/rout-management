@@ -3,6 +3,8 @@ import { routes, areas, dailyReports, routeTrackPoints, spots } from '@/db/schem
 import { eq, asc, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import ReportTrackPanel from '@/components/ReportTrackPanel'
+import { getCurrentUser } from '@/lib/auth'
+import { filterSpotsForDriver } from '@/lib/driverSpots'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +27,9 @@ export default async function TrackPage({
   const trackPoints = selected
     ? await db.select().from(routeTrackPoints).where(eq(routeTrackPoints.dailyReportId, selected.id)).orderBy(asc(routeTrackPoints.recordedAt))
     : []
-  const spotList = await db.select().from(spots).where(eq(spots.routeId, routeId))
+  const allSpots = await db.select().from(spots).where(eq(spots.routeId, routeId))
+  const user = await getCurrentUser()
+  const spotList = user ? await filterSpotsForDriver(allSpots, user.id) : allSpots
 
   return (
     <>

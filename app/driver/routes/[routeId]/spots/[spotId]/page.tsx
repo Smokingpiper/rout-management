@@ -3,6 +3,8 @@ import { routes, areas, spots, spotNotes, spotAlertAcknowledgments, routeTrackPo
 import { eq, and, asc, sql } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { getOrCreateTodaysReport } from '@/lib/daily-report'
+import { getCurrentUser } from '@/lib/auth'
+import { filterSpotsForDriver } from '@/lib/driverSpots'
 import SpotNavScreen from './SpotNavScreen'
 
 export const dynamic = 'force-dynamic'
@@ -13,12 +15,15 @@ export default async function SpotNavPage({ params }: { params: Promise<{ routeI
   if (!route) notFound()
   const [area] = await db.select().from(areas).where(eq(areas.id, route.areaId))
 
-  const spotList = await db.select().from(spots).where(eq(spots.routeId, routeId)).orderBy(asc(spots.orderInRoute))
+  const allSpots = await db.select().from(spots).where(eq(spots.routeId, routeId)).orderBy(asc(spots.orderInRoute))
+  const spot = allSpots.find(s => s.id === spotId)
+  if (!spot) notFound()
+
+  const user = await getCurrentUser()
+  const spotList = user ? await filterSpotsForDriver(allSpots, user.id) : allSpots
   const index = spotList.findIndex(s => s.id === spotId)
-  if (index === -1) notFound()
-  const spot = spotList[index]
-  const prevSpot = spotList[index - 1] ?? null
-  const nextSpot = spotList[index + 1] ?? null
+  const prevSpot = index > 0 ? spotList[index - 1] : null
+  const nextSpot = index >= 0 && index < spotList.length - 1 ? spotList[index + 1] : null
 
   const report = await getOrCreateTodaysReport(routeId)
 

@@ -4,6 +4,8 @@ import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import ReportTrackPanel from '@/components/ReportTrackPanel'
 import PhotoViewer from '@/components/PhotoViewer'
+import { getCurrentUser } from '@/lib/auth'
+import { filterSpotsForDriver } from '@/lib/driverSpots'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +24,9 @@ export default async function DriverReportDetailPage({ params }: { params: Promi
   const [area] = route ? await db.select().from(areas).where(eq(areas.id, route.areaId)) : [null]
   const wasteType = report.wasteTypeId ? (await db.select().from(wasteTypes).where(eq(wasteTypes.id, report.wasteTypeId)))[0] : null
 
-  const spotList = await db.select().from(spots).where(eq(spots.routeId, report.routeId))
+  const allSpots = await db.select().from(spots).where(eq(spots.routeId, report.routeId))
+  const user = await getCurrentUser()
+  const spotList = user ? await filterSpotsForDriver(allSpots, user.id) : allSpots
   const alertSpots = spotList.filter(s => s.isAlertSpot)
   const acks = alertSpots.length
     ? await db.select().from(spotAlertAcknowledgments).where(inArray(spotAlertAcknowledgments.spotId, alertSpots.map(s => s.id)))
