@@ -152,6 +152,16 @@ export const monthlySummaries = pgTable('monthly_summaries', {
   lockedAt:      timestamp('locked_at'),
 })
 
+// ── 月次集計の品目別内訳 ───────────────────────────────────
+export const monthlySummaryItems = pgTable('monthly_summary_items', {
+  id:            id(),
+  companyId:     text('company_id').notNull().references(() => companies.id),
+  wasteTypeId:   text('waste_type_id').notNull().references(() => wasteTypes.id),
+  yearMonth:     text('year_month').notNull(),
+  totalWeightKg: doublePrecision('total_weight_kg').notNull(),
+  totalAmount:   integer('total_amount').notNull(),
+})
+
 // ── 協会手数料マスタ ───────────────────────────────────────
 export const feeRules = pgTable('fee_rules', {
   id:            id(),

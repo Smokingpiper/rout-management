@@ -182,6 +182,15 @@ const STATEMENTS = [
     expires_at timestamptz NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
+
+  `CREATE TABLE monthly_summary_items (
+    id text PRIMARY KEY,
+    company_id text NOT NULL REFERENCES companies(id),
+    waste_type_id text NOT NULL REFERENCES waste_types(id),
+    year_month text NOT NULL,
+    total_weight_kg double precision NOT NULL,
+    total_amount integer NOT NULL
+  )`,
 ]
 
 export async function POST(request: Request) {

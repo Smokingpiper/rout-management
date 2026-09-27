@@ -24,6 +24,7 @@ const NAV_GROUPS = [
     label: '協会管理者向け',
     items: [
       { href: '/union/companies', label: '会社登録' },
+      { href: '/union/dashboard', label: '支払いダッシュボード' },
     ],
   },
 ]
