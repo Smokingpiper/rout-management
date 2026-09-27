@@ -14,22 +14,28 @@ const OSRM_BASE = 'https://router.project-osrm.org/route/v1/driving'
 
 // 現在地からスポットまでの道路沿いルート線を取得する。GPS更新のたびに叩くと
 // デモサーバーに負荷をかけすぎるため、一定距離動いた場合のみ・最低間隔を空けて再取得する。
-export function useRouteLine(origin: LatLng | null, destination: LatLng) {
+export function useRouteLine(origin: LatLng | null, destination: LatLng | null) {
   const [routeLine, setRouteLine] = useState<LatLng[] | null>(null)
   const [routeError, setRouteError] = useState<string | null>(null)
   const lastFetchedAt = useRef(0)
   const lastOrigin = useRef<LatLng | null>(null)
+  const lastDestination = useRef<LatLng | null>(null)
 
   useEffect(() => {
-    if (!origin) return
+    if (!origin || !destination) return
     const now = Date.now()
+    const destinationChanged = !lastDestination.current
+      || lastDestination.current.lat !== destination.lat || lastDestination.current.lng !== destination.lng
     const moved = !lastOrigin.current || distanceMeters(origin, lastOrigin.current) >= MIN_MOVE_METERS
-    if (lastOrigin.current && !moved) return
-    if (now - lastFetchedAt.current < MIN_REFETCH_INTERVAL_MS) return
+    if (!destinationChanged) {
+      if (lastOrigin.current && !moved) return
+      if (now - lastFetchedAt.current < MIN_REFETCH_INTERVAL_MS) return
+    }
 
     let cancelled = false
     lastFetchedAt.current = now
     lastOrigin.current = origin
+    lastDestination.current = destination
 
     const url = `${OSRM_BASE}/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`
     fetch(url)
@@ -47,7 +53,7 @@ export function useRouteLine(origin: LatLng | null, destination: LatLng) {
       .catch(() => { if (!cancelled) setRouteError('経路を取得できませんでした') })
 
     return () => { cancelled = true }
-  }, [origin?.lat, origin?.lng, destination.lat, destination.lng])
+  }, [origin?.lat, origin?.lng, destination?.lat, destination?.lng])
 
   return { routeLine, routeError }
 }

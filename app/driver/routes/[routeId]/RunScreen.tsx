@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import LeafletMap from '@/components/LeafletMap'
 import { useGpsTracking } from '@/lib/useGpsTracking'
 import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
+import { useRouteLine } from '@/lib/useRouteLine'
 import { buildChunkedNavUrls } from '@/lib/chunkedNav'
 import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
 import { distanceMeters } from '@/lib/missedSpots'
@@ -43,18 +44,34 @@ export default function RunScreen({
   const isApple = useIsApplePlatform()
   const navChunks = useMemo(() => buildChunkedNavUrls(spots, isApple), [spots, isApple])
 
-  // 現在地に最も近いスポットが属する区間を「今いる区間」とみなす
-  const currentChunkIndex = useMemo(() => {
+  // 現在地に最も近いスポットの順番（区間の判定、および「次のスポット」の起点として使う）
+  const nearestOrder = useMemo(() => {
     if (!currentLocation || spots.length === 0) return null
-    let nearestOrder = -1
-    let nearestDist = Infinity
+    let no = -1
+    let nd = Infinity
     for (const s of spots) {
       const d = distanceMeters({ lat: s.latitude, lng: s.longitude }, currentLocation)
-      if (d < nearestDist) { nearestDist = d; nearestOrder = s.orderInRoute }
+      if (d < nd) { nd = d; no = s.orderInRoute }
     }
+    return no
+  }, [currentLocation, spots])
+
+  // 現在地に最も近いスポットが属する区間を「今いる区間」とみなす
+  const currentChunkIndex = useMemo(() => {
+    if (nearestOrder == null) return null
     const chunk = navChunks.find(c => nearestOrder >= c.startOrder && nearestOrder <= c.endOrder)
     return chunk ? chunk.chunkIndex : null
-  }, [currentLocation, spots, navChunks])
+  }, [nearestOrder, navChunks])
+
+  // 現在地の次に回るべきスポット（順番ベース）。この画面だけで運転中も現在地→次のスポットの
+  // 経路が見えるようにし、スポットごとの画面遷移やナビアプリへの切り替えを避けられるようにする
+  const nextTargetSpot = useMemo(() => {
+    if (nearestOrder == null) return null
+    const sorted = [...spots].sort((a, b) => a.orderInRoute - b.orderInRoute)
+    return sorted.find(s => s.orderInRoute > nearestOrder) ?? null
+  }, [nearestOrder, spots])
+
+  const { routeLine } = useRouteLine(currentLocation, nextTargetSpot ? { lat: nextTargetSpot.latitude, lng: nextTargetSpot.longitude } : null)
 
   return (
     <>
@@ -91,12 +108,21 @@ export default function RunScreen({
       )}
 
       <div className="card">
-        <div className="card-title">マップ</div>
+        <div className="card-title">
+          マップ
+          {nextTargetSpot && <span className="pill info">次のスポット: {nextTargetSpot.address || `#${nextTargetSpot.orderInRoute}`}</span>}
+        </div>
         <LeafletMap
-          markers={spots.map(s => ({ lat: s.latitude, lng: s.longitude, alert: s.isAlertSpot }))}
+          markers={spots.map(s => ({ lat: s.latitude, lng: s.longitude, alert: s.isAlertSpot, target: s.id === nextTargetSpot?.id }))}
           currentLocation={currentLocation}
-          height={260}
+          path={routeLine ?? undefined}
+          height={300}
         />
+        {recordingOn && (
+          <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 6 }}>
+            青い線は現在地から次のスポットまでの参考ルートです。この画面を開いたままにしておけば、スポットごとに画面を移動しなくてもGPS記録が続きます。
+          </div>
+        )}
       </div>
 
       {alertSpots.length > 0 && (
