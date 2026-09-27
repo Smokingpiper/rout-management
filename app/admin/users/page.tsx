@@ -28,25 +28,23 @@ export default async function AdminUsersPage() {
       </div>
 
       <div className="card">
-        <table>
-          <thead>
-            <tr><th>メールアドレス</th><th>氏名</th><th>ロール</th><th>登録日</th><th></th></tr>
-          </thead>
-          <tbody>
-            {userList.map(u => (
-              <tr key={u.id}>
-                <td>{u.email}</td>
-                <td>{u.name || '—'}</td>
-                <td>{ROLE_LABEL[u.role]}</td>
-                <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{u.createdAt.toISOString().slice(0, 10)}</td>
-                <td><a className="btn sm" href={`/admin/users/${u.id}`}>詳細</a></td>
-              </tr>
-            ))}
-            {userList.length === 0 && (
-              <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>まだユーザーが登録されていません</td></tr>
-            )}
-          </tbody>
-        </table>
+        {userList.map(u => (
+          <div key={u.id} className="spot-row" style={{ flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 13.5 }}>{u.name || u.email}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2, wordBreak: 'break-all' }}>
+                {u.email}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                {ROLE_LABEL[u.role]} ・ 登録日 {u.createdAt.toISOString().slice(0, 10)}
+              </div>
+            </div>
+            <a className="btn sm" href={`/admin/users/${u.id}`}>詳細</a>
+          </div>
+        ))}
+        {userList.length === 0 && (
+          <p style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0', fontSize: 13 }}>まだユーザーが登録されていません</p>
+        )}
       </div>
 
       <NewUserForm />

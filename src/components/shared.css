@@ -234,4 +234,7 @@ input[type="text"], input[type="email"], input[type="number"], input[type="date"
 
   .app-main { padding: 18px 16px 40px; max-width: 100%; }
   .grid-cards { grid-template-columns: 1fr; }
+
+  /* 表が幅の広い列を含んでいても、ページ全体ではなくカード内だけで横スクロールさせる */
+  .card { overflow-x: auto; }
 }
