@@ -1,13 +1,13 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import LeafletMap from '@/components/LeafletMap'
 import { useGpsTracking } from '@/lib/useGpsTracking'
 import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
 import { useRouteLine } from '@/lib/useRouteLine'
 import { buildChunkedNavUrls } from '@/lib/chunkedNav'
 import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
-import { distanceMeters } from '@/lib/missedSpots'
+import { distanceMeters, MISSED_SPOT_THRESHOLD_M } from '@/lib/missedSpots'
 import DriverSpotList from './DriverSpotList'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number; hasNote?: boolean }
@@ -63,13 +63,28 @@ export default function RunScreen({
     return chunk ? chunk.chunkIndex : null
   }, [nearestOrder, navChunks])
 
-  // 現在地の次に回るべきスポット（順番ベース）。この画面だけで運転中も現在地→次のスポットの
+  // 到達済み（閾値内に近づいた）とみなせた最大の順番。単純な最近傍判定だと、GPSが
+  // ルートから離れた場所（テスト中など）にあるだけで「次のスポット」が無くなってしまうため、
+  // 一度でも近づいたスポットの順番だけを単調に進める方式にしている
+  const [reachedOrder, setReachedOrder] = useState(0)
+  useEffect(() => {
+    if (!currentLocation) return
+    let maxReached = reachedOrder
+    for (const s of spots) {
+      if (s.orderInRoute <= maxReached) continue
+      if (distanceMeters({ lat: s.latitude, lng: s.longitude }, currentLocation) <= MISSED_SPOT_THRESHOLD_M) {
+        maxReached = Math.max(maxReached, s.orderInRoute)
+      }
+    }
+    if (maxReached !== reachedOrder) setReachedOrder(maxReached)
+  }, [currentLocation, spots, reachedOrder])
+
+  // 現在地の次に回るべきスポット。この画面だけで運転中も現在地→次のスポットの
   // 経路が見えるようにし、スポットごとの画面遷移やナビアプリへの切り替えを避けられるようにする
   const nextTargetSpot = useMemo(() => {
-    if (nearestOrder == null) return null
     const sorted = [...spots].sort((a, b) => a.orderInRoute - b.orderInRoute)
-    return sorted.find(s => s.orderInRoute > nearestOrder) ?? null
-  }, [nearestOrder, spots])
+    return sorted.find(s => s.orderInRoute > reachedOrder) ?? null
+  }, [reachedOrder, spots])
 
   const { routeLine } = useRouteLine(currentLocation, nextTargetSpot ? { lat: nextTargetSpot.latitude, lng: nextTargetSpot.longitude } : null)
 
