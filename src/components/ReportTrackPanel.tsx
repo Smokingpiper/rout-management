@@ -39,14 +39,20 @@ export default function ReportTrackPanel({ points, spots }: { points: Point[]; s
         focusLatLng={selected}
       />
 
-      <div style={{ marginTop: 12 }}>
-        <SpotPassageList
-          spots={sortedSpots.map(s => ({ id: s.id, orderInRoute: s.orderInRoute, address: s.address, lat: s.latitude, lng: s.longitude }))}
-          missedIds={missedIds}
-          selectedId={selected?.id ?? null}
-          onSelect={s => setSelected({ id: s.id, lat: s.lat, lng: s.lng })}
-        />
-      </div>
+      <details style={{ marginTop: 12 }} open={missedIds.size > 0}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
+          回ったスポット一覧（{spots.length}件）
+          {missedIds.size > 0 && <span className="pill warn" style={{ marginLeft: 8 }}>⚠️ 周り損ないの可能性 {missedIds.size}件</span>}
+        </summary>
+        <div style={{ marginTop: 10 }}>
+          <SpotPassageList
+            spots={sortedSpots.map(s => ({ id: s.id, orderInRoute: s.orderInRoute, address: s.address, lat: s.latitude, lng: s.longitude }))}
+            missedIds={missedIds}
+            selectedId={selected?.id ?? null}
+            onSelect={s => setSelected({ id: s.id, lat: s.lat, lng: s.lng })}
+          />
+        </div>
+      </details>
     </div>
   )
 }

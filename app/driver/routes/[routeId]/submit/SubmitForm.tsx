@@ -76,7 +76,7 @@ export default function SubmitForm({
     <div className="card">
       <div className="field">
         <label>スポット到達状況</label>
-        <div style={{ fontSize: 13, color: 'var(--text-2)' }}>全{spotCount}件（軌跡は「軌跡マップ」で確認できます）</div>
+        <div style={{ fontSize: 13, color: 'var(--text-2)' }}>全{spotCount}件（上の軌跡・通過確認で周り損ないがないかご確認ください）</div>
       </div>
       <div className="field">
         <label>ゴミ種別（本日のルート全体で1種類）</label>
