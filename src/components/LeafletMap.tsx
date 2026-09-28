@@ -24,7 +24,9 @@ export default function LeafletMap({
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const overlaysRef = useRef<any[]>([])
+  const boundsRef = useRef<[number, number][]>([])
   const [error, setError] = useState<string | null>(null)
+  const [fullscreen, setFullscreen] = useState(false)
 
   useEffect(() => {
     if (!apiKey || !containerRef.current) return
@@ -92,6 +94,7 @@ export default function LeafletMap({
         boundsPoints.push([currentLocation.lat, currentLocation.lng])
       }
 
+      boundsRef.current = boundsPoints
       if (boundsPoints.length > 0) {
         map.fitBounds(boundsPoints, { padding: [40, 40] })
       }
@@ -115,12 +118,51 @@ export default function LeafletMap({
     }
   }, [])
 
+  // 全画面表示の切り替え時、コンテナサイズが変わったことをLeafletに伝えて
+  // タイルの欠けを防ぎ、元の範囲が収まるよう視点を引き直す
+  useEffect(() => {
+    document.body.style.overflow = fullscreen ? 'hidden' : ''
+    const id = requestAnimationFrame(() => {
+      if (!mapRef.current) return
+      mapRef.current.invalidateSize()
+      if (boundsRef.current.length > 0) {
+        mapRef.current.fitBounds(boundsRef.current, { padding: [40, 40] })
+      }
+    })
+    return () => {
+      cancelAnimationFrame(id)
+      document.body.style.overflow = ''
+    }
+  }, [fullscreen])
+
   if (!apiKey) return null
   if (error) return <div style={{ padding: 12, fontSize: 12.5, color: 'var(--danger)' }}>{error}</div>
 
   return (
-    <div style={{ position: 'relative', width: '100%', height }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', borderRadius: 10, border: '1px solid var(--border)' }} />
+    <div style={fullscreen
+      ? { position: 'fixed', inset: 0, zIndex: 3000, background: 'var(--bg-2)' }
+      : { position: 'relative', width: '100%', height }}
+    >
+      <div
+        ref={containerRef}
+        style={fullscreen
+          ? { width: '100%', height: '100%' }
+          : { width: '100%', height: '100%', borderRadius: 10, border: '1px solid var(--border)' }}
+      />
+      <button
+        type="button"
+        onClick={() => setFullscreen(f => !f)}
+        aria-label={fullscreen ? '全画面を閉じる' : '全画面表示'}
+        style={{
+          position: 'absolute', top: 10, right: 10, zIndex: 1001,
+          width: 36, height: 36, borderRadius: 8, border: '1px solid var(--border)',
+          background: 'var(--bg-2)', color: 'var(--text)', fontSize: 16, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 1px 4px rgba(0,0,0,.2)',
+        }}
+      >
+        {fullscreen ? '✕' : '⛶'}
+      </button>
       {focusLatLng && (
         <>
           <div style={{
