@@ -33,7 +33,7 @@ export function playBeep() {
   osc.frequency.setValueAtTime(880, now)
   osc.frequency.setValueAtTime(1320, now + 0.09)
   gain.gain.setValueAtTime(0.0001, now)
-  gain.gain.exponentialRampToValueAtTime(0.3, now + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.9, now + 0.01)
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28)
   osc.connect(gain)
   gain.connect(ctx.destination)
