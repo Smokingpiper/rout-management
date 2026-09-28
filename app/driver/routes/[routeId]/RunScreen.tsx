@@ -75,7 +75,7 @@ export default function RunScreen({
     return sorted.find(s => s.orderInRoute > reachedOrder) ?? null
   }, [reachedOrder, spots])
 
-  const { routeLine } = useRouteLine(currentLocation, nextTargetSpot ? { lat: nextTargetSpot.latitude, lng: nextTargetSpot.longitude } : null)
+  const { routeLine, routeError } = useRouteLine(currentLocation, nextTargetSpot ? { lat: nextTargetSpot.latitude, lng: nextTargetSpot.longitude } : null)
 
   return (
     <>
@@ -135,8 +135,12 @@ export default function RunScreen({
         />
         {recordingOn && (
           <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 6 }}>
-            🔴 未通過 → 🟢 通過済み（40m以内に近づくと自動で切り替わり、通知音が鳴ります）・🔵 次のスポット。
-            青い線は現在地から次のスポットまでの参考ルートです。この画面を開いたままにしておけば、スポットごとに画面を移動しなくてもGPS記録が続きます。
+            {!currentLocation
+              ? '📡 現在地を取得しています…（数秒〜数十秒かかることがあります）'
+              : !routeLine
+                ? (routeError ? '⚠️ 参考ルートを取得できませんでした。自動で再試行しています…' : '📡 次のスポットまでの参考ルートを取得しています…')
+                : '🔴 未通過 → 🟢 通過済み（40m以内に近づくと自動で切り替わり、通知音が鳴ります）・🔵 次のスポット。青い線は現在地から次のスポットまでの参考ルートです。'}
+            {' '}この画面を開いたままにしておけば、スポットごとに画面を移動しなくてもGPS記録が続きます。
           </div>
         )}
       </div>

@@ -31,6 +31,18 @@ export function useGpsTracking(dailyReportId: string, enabled: boolean, initialC
       }).then(res => { if (res.ok) setPointCount(c => c + 1) })
     }
 
+    // watchPositionの初回コールバックは測位に時間がかかることがあるため、
+    // 収集開始直後は getCurrentPosition でも並行して現在地を取りにいき、
+    // マップの参考ルート線などができるだけ早く表示されるようにする
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsActive(true)
+        sendPoint(pos.coords.latitude, pos.coords.longitude, false)
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
+    )
+
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setGpsActive(true)
