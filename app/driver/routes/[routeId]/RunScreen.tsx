@@ -31,8 +31,8 @@ export default function RunScreen({
   const [acked, setAcked] = useState(new Set(ackedSpotIds))
   const [soundEnabled, setSoundEnabled] = useState(() => isBeepUnlocked())
 
-  function enableSound() {
-    unlockBeep()
+  async function enableSound() {
+    await unlockBeep()
     playBeep()
     setSoundEnabled(true)
   }

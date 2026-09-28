@@ -7,20 +7,25 @@ export function isBeepUnlocked() {
 }
 
 // iOS Safari等はユーザー操作を伴わずに音声を再生できないため、
-// ボタンタップ等のユーザー操作イベントの中でこれを呼び、AudioContextを有効化しておく
-export function unlockBeep() {
-  if (ctx) {
-    if (ctx.state === 'suspended') ctx.resume()
-    return
+// ボタンタップ等のユーザー操作イベントの中でこれを呼び、AudioContextを有効化しておく。
+// 生成直後もsuspended状態のままのことがあるため、生成時にも必ずresume()する
+export async function unlockBeep(): Promise<void> {
+  if (!ctx) {
+    const Ctor = window.AudioContext || (window as any).webkitAudioContext
+    if (!Ctor) return
+    ctx = new Ctor()
   }
-  const Ctor = window.AudioContext || (window as any).webkitAudioContext
-  if (!Ctor) return
-  ctx = new Ctor()
+  if (ctx.state === 'suspended') {
+    try { await ctx.resume() } catch { /* noop */ }
+  }
 }
 
 // スポット通過などの通知音（外部音声ファイル不要、Web Audio APIでその場生成する短いピロン音）
 export function playBeep() {
   if (!ctx) return
+  // バックグラウンド復帰後などにブラウザ側で再度suspendedになることがあるため、
+  // 呼び出しのたびに保険で再開を試みる（結果は待たない）
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
   const now = ctx.currentTime
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
