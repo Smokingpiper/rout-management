@@ -5,8 +5,7 @@ import LeafletMap from '@/components/LeafletMap'
 import { useGpsTracking } from '@/lib/useGpsTracking'
 import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
 import { useRouteLine } from '@/lib/useRouteLine'
-import { buildChunkedNavUrls } from '@/lib/chunkedNav'
-import { useIsApplePlatform, navUrl, navAppLabel } from '@/lib/mapNav'
+import { useIsApplePlatform, navUrl } from '@/lib/mapNav'
 import { distanceMeters, MISSED_SPOT_THRESHOLD_M } from '@/lib/missedSpots'
 import DriverSpotList from './DriverSpotList'
 
@@ -42,26 +41,6 @@ export default function RunScreen({
   const alertSpots = spots.filter(s => s.isAlertSpot)
   const remainingAlerts = alertSpots.filter(s => !acked.has(s.id)).length
   const isApple = useIsApplePlatform()
-  const navChunks = useMemo(() => buildChunkedNavUrls(spots, isApple), [spots, isApple])
-
-  // 現在地に最も近いスポットの順番（区間の判定、および「次のスポット」の起点として使う）
-  const nearestOrder = useMemo(() => {
-    if (!currentLocation || spots.length === 0) return null
-    let no = -1
-    let nd = Infinity
-    for (const s of spots) {
-      const d = distanceMeters({ lat: s.latitude, lng: s.longitude }, currentLocation)
-      if (d < nd) { nd = d; no = s.orderInRoute }
-    }
-    return no
-  }, [currentLocation, spots])
-
-  // 現在地に最も近いスポットが属する区間を「今いる区間」とみなす
-  const currentChunkIndex = useMemo(() => {
-    if (nearestOrder == null) return null
-    const chunk = navChunks.find(c => nearestOrder >= c.startOrder && nearestOrder <= c.endOrder)
-    return chunk ? chunk.chunkIndex : null
-  }, [nearestOrder, navChunks])
 
   // 到達済み（閾値内に近づいた）とみなせた最大の順番。単純な最近傍判定だと、GPSが
   // ルートから離れた場所（テスト中など）にあるだけで「次のスポット」が無くなってしまうため、
@@ -128,13 +107,18 @@ export default function RunScreen({
           {nextTargetSpot && <span className="pill info">次のスポット: {nextTargetSpot.address || `#${nextTargetSpot.orderInRoute}`}</span>}
         </div>
         <LeafletMap
-          markers={spots.map(s => ({ lat: s.latitude, lng: s.longitude, alert: s.isAlertSpot, target: s.id === nextTargetSpot?.id }))}
+          markers={spots.map(s => ({
+            lat: s.latitude, lng: s.longitude, alert: s.isAlertSpot,
+            target: s.id === nextTargetSpot?.id,
+            unvisited: s.orderInRoute > reachedOrder,
+          }))}
           currentLocation={currentLocation}
           path={routeLine ?? undefined}
           height={300}
         />
         {recordingOn && (
           <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 6 }}>
+            🔴 未通過 → 🟢 通過済み（40m以内に近づくと自動で切り替わります）・🔵 次のスポット。
             青い線は現在地から次のスポットまでの参考ルートです。この画面を開いたままにしておけば、スポットごとに画面を移動しなくてもGPS記録が続きます。
           </div>
         )}
@@ -161,42 +145,6 @@ export default function RunScreen({
       )}
 
       <DriverSpotList routeId={routeId} spots={spots} />
-
-      {reportOpen && (
-        <details className="card">
-          <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
-            🔰 ナビが必要な方はこちら（区間ナビ・{navAppLabel(isApple)}）
-            {currentChunkIndex != null && (
-              <span className="pill ok" style={{ marginLeft: 8 }}>📍 現在地は区間{currentChunkIndex + 1}</span>
-            )}
-          </summary>
-          <p style={{ fontSize: 12.5, color: 'var(--text-2)', margin: '10px 0', lineHeight: 1.6 }}>
-            {navAppLabel(isApple)}は1回のナビに入れられる経由地の数に上限があるため、入力順のまま{navChunks.length}区間に分けています。
-            区間を1つ終えたら、次の区間のボタンをタップしてください（現在地からその区間の最後のスポットまで自動でナビされます）。
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {navChunks.map(chunk => {
-              const isCurrent = chunk.chunkIndex === currentChunkIndex
-              return (
-                <a
-                  key={chunk.chunkIndex}
-                  className={isCurrent ? 'btn' : 'btn primary'}
-                  style={{
-                    justifyContent: 'space-between',
-                    ...(isCurrent ? { background: 'var(--accent)', color: '#fff', border: '2px solid var(--accent)' } : {}),
-                  }}
-                  href={chunk.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <span>{isCurrent ? '📍✅' : '📍'} 区間{chunk.chunkIndex + 1}（{chunk.startOrder}〜{chunk.endOrder}件目）{isCurrent ? '・現在地' : ''}</span>
-                  <span>ナビ開始 →</span>
-                </a>
-              )
-            })}
-          </div>
-        </details>
-      )}
 
       <div className="grid-cards" style={{ gridTemplateColumns: reportOpen ? '1fr 1fr' : '1fr' }}>
         <a className="btn" href={`/driver/routes/${routeId}/track`}>🛰 軌跡マップを見る</a>

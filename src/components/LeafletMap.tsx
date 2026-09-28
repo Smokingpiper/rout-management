@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 
-export type MapMarker = { lat: number; lng: number; alert?: boolean; missed?: boolean; target?: boolean }
+export type MapMarker = { lat: number; lng: number; alert?: boolean; missed?: boolean; target?: boolean; unvisited?: boolean }
 export type LatLng = { lat: number; lng: number }
 
 // MapTilerの256pxラスタタイル。512px版(streets-v4/{z}/{x}/{y}.png)を使う場合は
@@ -62,7 +62,7 @@ export default function LeafletMap({
               radius: m.target ? 9 : 7,
               color: '#fff',
               weight: m.target ? 2.5 : 1.5,
-              fillColor: m.target ? '#4A7CF6' : m.alert ? '#F59E0B' : '#3EA96B',
+              fillColor: m.alert ? '#F59E0B' : m.target ? '#4A7CF6' : m.unvisited ? '#E5484D' : '#3EA96B',
               fillOpacity: 1,
             })
         marker.addTo(map)
