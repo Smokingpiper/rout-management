@@ -2,6 +2,10 @@
 
 let ctx: AudioContext | null = null
 
+export function isBeepUnlocked() {
+  return ctx !== null
+}
+
 // iOS Safari等はユーザー操作を伴わずに音声を再生できないため、
 // ボタンタップ等のユーザー操作イベントの中でこれを呼び、AudioContextを有効化しておく
 export function unlockBeep() {

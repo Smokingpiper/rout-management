@@ -7,7 +7,7 @@ import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
 import { useRouteLine } from '@/lib/useRouteLine'
 import { useIsApplePlatform, navUrl } from '@/lib/mapNav'
 import { distanceMeters, MISSED_SPOT_THRESHOLD_M } from '@/lib/missedSpots'
-import { unlockBeep, playBeep } from '@/lib/beep'
+import { unlockBeep, playBeep, isBeepUnlocked } from '@/lib/beep'
 import DriverSpotList from './DriverSpotList'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number; hasNote?: boolean }
@@ -29,6 +29,13 @@ export default function RunScreen({
   const trackingEnabled = reportOpen && recordingOn
   const { gpsActive, gpsError, pointCount, currentLocation, backgrounded } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
   const [acked, setAcked] = useState(new Set(ackedSpotIds))
+  const [soundEnabled, setSoundEnabled] = useState(() => isBeepUnlocked())
+
+  function enableSound() {
+    unlockBeep()
+    playBeep()
+    setSoundEnabled(true)
+  }
 
   // ページ内のどこかを最初にタップした時点でAudioContextを有効化しておく
   // （GPSトリガーのビープ音はユーザー操作を伴わないため、iOS Safari等では
@@ -107,6 +114,13 @@ export default function RunScreen({
               停止中は移動経路が記録されません。休憩などで一時的に止める場合にご利用ください。
             </p>
           )}
+          <button
+            className="btn sm"
+            style={{ marginTop: 8, width: '100%' }}
+            onClick={enableSound}
+          >
+            {soundEnabled ? '🔔 通知音は有効です（タップでテスト再生）' : '🔕 通知音を有効にする（スポット通過時に鳴らす）'}
+          </button>
         </div>
       ) : (
         <div className="card">
