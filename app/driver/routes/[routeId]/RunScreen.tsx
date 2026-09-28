@@ -7,6 +7,7 @@ import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
 import { useRouteLine } from '@/lib/useRouteLine'
 import { useIsApplePlatform, navUrl } from '@/lib/mapNav'
 import { distanceMeters, MISSED_SPOT_THRESHOLD_M } from '@/lib/missedSpots'
+import { unlockBeep, playBeep } from '@/lib/beep'
 import DriverSpotList from './DriverSpotList'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number; hasNote?: boolean }
@@ -28,6 +29,15 @@ export default function RunScreen({
   const trackingEnabled = reportOpen && recordingOn
   const { gpsActive, gpsError, pointCount, currentLocation, backgrounded } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
   const [acked, setAcked] = useState(new Set(ackedSpotIds))
+
+  // ページ内のどこかを最初にタップした時点でAudioContextを有効化しておく
+  // （GPSトリガーのビープ音はユーザー操作を伴わないため、iOS Safari等では
+  // 事前にユーザー操作でAudioContextを起動しておかないと再生できない）
+  useEffect(() => {
+    function unlock() { unlockBeep() }
+    document.addEventListener('pointerdown', unlock, { once: true })
+    return () => document.removeEventListener('pointerdown', unlock)
+  }, [])
 
   async function acknowledgeAlert(spotId: string) {
     const res = await fetch('/api/driver/alert-ack', {
@@ -55,7 +65,10 @@ export default function RunScreen({
         maxReached = Math.max(maxReached, s.orderInRoute)
       }
     }
-    if (maxReached !== reachedOrder) setReachedOrder(maxReached)
+    if (maxReached !== reachedOrder) {
+      setReachedOrder(maxReached)
+      playBeep()
+    }
   }, [currentLocation, spots, reachedOrder])
 
   // 現在地の次に回るべきスポット。この画面だけで運転中も現在地→次のスポットの
@@ -85,7 +98,7 @@ export default function RunScreen({
           <button
             className={`btn sm ${recordingOn ? '' : 'primary'}`}
             style={{ marginTop: 8, width: '100%' }}
-            onClick={toggleRecording}
+            onClick={() => { unlockBeep(); toggleRecording() }}
           >
             {recordingOn ? '⏸ 収集終了' : '▶ 収集開始'}
           </button>
@@ -118,7 +131,7 @@ export default function RunScreen({
         />
         {recordingOn && (
           <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 6 }}>
-            🔴 未通過 → 🟢 通過済み（40m以内に近づくと自動で切り替わります）・🔵 次のスポット。
+            🔴 未通過 → 🟢 通過済み（40m以内に近づくと自動で切り替わり、通知音が鳴ります）・🔵 次のスポット。
             青い線は現在地から次のスポットまでの参考ルートです。この画面を開いたままにしておけば、スポットごとに画面を移動しなくてもGPS記録が続きます。
           </div>
         )}
