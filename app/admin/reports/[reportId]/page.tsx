@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments } from '@/db/schema'
+import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments, missedSpotOverrides } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import ReportTrackPanel from '@/components/ReportTrackPanel'
@@ -31,6 +31,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
   const ackedForThisReport = acks.filter(a => a.dailyReportId === report.id)
 
   const trackPoints = await db.select().from(routeTrackPoints).where(eq(routeTrackPoints.dailyReportId, report.id))
+  const overrides = await db.select().from(missedSpotOverrides).where(eq(missedSpotOverrides.dailyReportId, report.id))
 
   return (
     <>
@@ -59,6 +60,8 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
       <ReportTrackPanel
         points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
         spots={spotList}
+        dailyReportId={report.id}
+        initialOverriddenSpotIds={overrides.map(o => o.spotId)}
       />
 
       <ApproveActions reportId={report.id} status={report.status} />

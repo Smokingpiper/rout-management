@@ -142,6 +142,15 @@ export const spotAlertAcknowledgments = pgTable('spot_alert_acknowledgments', {
   acknowledgedAt: timestamp('acknowledged_at').defaultNow().notNull(),
 })
 
+// ── 周り損ない判定の手動クリア（GPS誤差等による誤検知の解除） ───────
+export const missedSpotOverrides = pgTable('missed_spot_overrides', {
+  id:            id(),
+  dailyReportId: text('daily_report_id').notNull().references(() => dailyReports.id),
+  spotId:        text('spot_id').notNull().references(() => spots.id),
+  clearedBy:     text('cleared_by').references(() => users.id),
+  clearedAt:     timestamp('cleared_at').defaultNow().notNull(),
+})
+
 // ── 月次集計（確定値） ────────────────────────────────────
 export const monthlySummaries = pgTable('monthly_summaries', {
   id:            id(),

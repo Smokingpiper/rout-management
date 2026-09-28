@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { routes, areas, dailyReports, routeTrackPoints, spots } from '@/db/schema'
+import { routes, areas, dailyReports, routeTrackPoints, spots, missedSpotOverrides } from '@/db/schema'
 import { eq, asc, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import ReportTrackPanel from '@/components/ReportTrackPanel'
@@ -30,6 +30,9 @@ export default async function TrackPage({
   const allSpots = await db.select().from(spots).where(eq(spots.routeId, routeId))
   const user = await getCurrentUser()
   const spotList = user ? await filterSpotsForDriver(allSpots, user.id) : allSpots
+  const overrides = selected
+    ? await db.select().from(missedSpotOverrides).where(eq(missedSpotOverrides.dailyReportId, selected.id))
+    : []
 
   return (
     <>
@@ -60,6 +63,8 @@ export default async function TrackPage({
         <ReportTrackPanel
           points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
           spots={spotList}
+          dailyReportId={selected.id}
+          initialOverriddenSpotIds={overrides.map(o => o.spotId)}
         />
       )}
     </>

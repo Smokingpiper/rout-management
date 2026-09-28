@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { routes, areas, wasteTypes, spots, routeTrackPoints } from '@/db/schema'
+import { routes, areas, wasteTypes, spots, routeTrackPoints, missedSpotOverrides } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { getOrCreateTodaysReport } from '@/lib/daily-report'
@@ -23,6 +23,7 @@ export default async function SubmitPage({ params }: { params: Promise<{ routeId
   const user = await getCurrentUser()
   const spotList = user ? await filterSpotsForDriver(allSpots, user.id) : allSpots
   const trackPoints = await db.select().from(routeTrackPoints).where(eq(routeTrackPoints.dailyReportId, report.id))
+  const overrides = await db.select().from(missedSpotOverrides).where(eq(missedSpotOverrides.dailyReportId, report.id))
 
   return (
     <>
@@ -33,6 +34,8 @@ export default async function SubmitPage({ params }: { params: Promise<{ routeId
       <ReportTrackPanel
         points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
         spots={spotList}
+        dailyReportId={report.id}
+        initialOverriddenSpotIds={overrides.map(o => o.spotId)}
       />
 
       <SubmitForm

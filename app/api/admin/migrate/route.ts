@@ -191,6 +191,14 @@ const STATEMENTS = [
     total_weight_kg double precision NOT NULL,
     total_amount integer NOT NULL
   )`,
+
+  `CREATE TABLE missed_spot_overrides (
+    id text PRIMARY KEY,
+    daily_report_id text NOT NULL REFERENCES daily_reports(id),
+    spot_id text NOT NULL REFERENCES spots(id),
+    cleared_by text REFERENCES users(id),
+    cleared_at timestamptz NOT NULL DEFAULT now()
+  )`,
 ]
 
 export async function POST(request: Request) {

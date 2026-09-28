@@ -3,18 +3,24 @@
 type SpotRow = { id: string; orderInRoute: number; address: string | null; lat: number; lng: number }
 
 export default function SpotPassageList({
-  spots, missedIds, selectedId, onSelect,
+  spots, missedIds, overriddenIds, pendingIds, selectedId, onSelect, onClear, onRestore,
 }: {
   spots: SpotRow[]
   missedIds: Set<string>
+  overriddenIds: Set<string>
+  pendingIds: Set<string>
   selectedId: string | null
   onSelect: (spot: SpotRow) => void
+  onClear: (spotId: string) => void
+  onRestore: (spotId: string) => void
 }) {
   return (
-    <div style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10 }}>
+    <div style={{ maxHeight: 320, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10 }}>
       {spots.map(s => {
-        const missed = missedIds.has(s.id)
+        const overridden = overriddenIds.has(s.id)
+        const missed = missedIds.has(s.id) && !overridden
         const isSelected = selectedId === s.id
+        const pending = pendingIds.has(s.id)
         return (
           <div
             key={s.id}
@@ -25,9 +31,32 @@ export default function SpotPassageList({
               background: isSelected ? 'var(--accent-dim)' : 'transparent',
             }}
           >
-            <span>{missed ? '⚠️' : '✅'}</span>
+            <span>{overridden ? '☑️' : missed ? '⚠️' : '✅'}</span>
             <span style={{ color: 'var(--text-3)', fontFamily: 'monospace', flexShrink: 0 }}>#{s.orderInRoute}</span>
-            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.address}</span>
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {s.address}
+              {overridden && <span style={{ color: 'var(--text-3)', marginLeft: 6 }}>（手動確認）</span>}
+            </span>
+            {missed && (
+              <button
+                className="btn sm"
+                disabled={pending}
+                onClick={e => { e.stopPropagation(); onClear(s.id) }}
+                style={{ flexShrink: 0 }}
+              >
+                クリア
+              </button>
+            )}
+            {overridden && (
+              <button
+                className="btn sm"
+                disabled={pending}
+                onClick={e => { e.stopPropagation(); onRestore(s.id) }}
+                style={{ flexShrink: 0, color: 'var(--text-3)' }}
+              >
+                元に戻す
+              </button>
+            )}
           </div>
         )
       })}
