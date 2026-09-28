@@ -7,7 +7,7 @@ import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
 import { useRouteLine } from '@/lib/useRouteLine'
 import { useIsApplePlatform, navUrl } from '@/lib/mapNav'
 import { distanceMeters, MISSED_SPOT_THRESHOLD_M } from '@/lib/missedSpots'
-import { unlockBeep, playBeep, isBeepUnlocked } from '@/lib/beep'
+import { unlockSpotSound, playSpotSound, isSpotSoundUnlocked } from '@/lib/spotSound'
 import DriverSpotList from './DriverSpotList'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number; hasNote?: boolean }
@@ -29,22 +29,12 @@ export default function RunScreen({
   const trackingEnabled = reportOpen && recordingOn
   const { gpsActive, gpsError, pointCount, currentLocation, backgrounded } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
   const [acked, setAcked] = useState(new Set(ackedSpotIds))
-  const [soundEnabled, setSoundEnabled] = useState(() => isBeepUnlocked())
+  const [soundEnabled, setSoundEnabled] = useState(() => isSpotSoundUnlocked())
 
   async function enableSound() {
-    await unlockBeep()
-    playBeep()
+    await unlockSpotSound()
     setSoundEnabled(true)
   }
-
-  // ページ内のどこかを最初にタップした時点でAudioContextを有効化しておく
-  // （GPSトリガーのビープ音はユーザー操作を伴わないため、iOS Safari等では
-  // 事前にユーザー操作でAudioContextを起動しておかないと再生できない）
-  useEffect(() => {
-    function unlock() { unlockBeep() }
-    document.addEventListener('pointerdown', unlock, { once: true })
-    return () => document.removeEventListener('pointerdown', unlock)
-  }, [])
 
   async function acknowledgeAlert(spotId: string) {
     const res = await fetch('/api/driver/alert-ack', {
@@ -74,7 +64,7 @@ export default function RunScreen({
     }
     if (maxReached !== reachedOrder) {
       setReachedOrder(maxReached)
-      playBeep()
+      playSpotSound()
     }
   }, [currentLocation, spots, reachedOrder])
 
@@ -105,7 +95,7 @@ export default function RunScreen({
           <button
             className={`btn sm ${recordingOn ? '' : 'primary'}`}
             style={{ marginTop: 8, width: '100%' }}
-            onClick={() => { unlockBeep(); toggleRecording() }}
+            onClick={toggleRecording}
           >
             {recordingOn ? '⏸ 収集終了' : '▶ 収集開始'}
           </button>
