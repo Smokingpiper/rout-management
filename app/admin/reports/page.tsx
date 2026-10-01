@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { dailyReports, routes, areas, wasteTypes } from '@/db/schema'
+import { dailyReports, routes, areas, wasteTypes, users } from '@/db/schema'
 import { desc } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +25,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const areaById = new Map(areaList.map(a => [a.id, a]))
   const wasteTypeList = await db.select().from(wasteTypes)
   const wasteTypeById = new Map(wasteTypeList.map(w => [w.id, w]))
+  const userList = await db.select().from(users)
+  const userById = new Map(userList.map(u => [u.id, u]))
 
   let reportList = await db.select().from(dailyReports).orderBy(desc(dailyReports.reportDate)).limit(200)
 
@@ -50,18 +52,20 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <div className="card">
         <table>
           <thead>
-            <tr><th>日付</th><th>エリア</th><th>ルート</th><th>種別</th><th>総重量</th><th>状態</th><th></th></tr>
+            <tr><th>日付</th><th>エリア</th><th>ルート</th><th>ドライバー</th><th>種別</th><th>総重量</th><th>状態</th><th></th></tr>
           </thead>
           <tbody>
             {reportList.map(r => {
               const route = routeById.get(r.routeId)
               const area = route ? areaById.get(route.areaId) : null
               const wt = r.wasteTypeId ? wasteTypeById.get(r.wasteTypeId) : null
+              const submitter = r.submittedBy ? userById.get(r.submittedBy) : null
               return (
                 <tr key={r.id}>
                   <td>{r.reportDate}</td>
                   <td>{area?.name ?? '—'}</td>
                   <td>{route?.name ?? '—'}</td>
+                  <td>{submitter ? (submitter.name || submitter.email) : <span style={{ color: 'var(--text-3)' }}>未提出</span>}</td>
                   <td>{wt?.name ?? '—'}</td>
                   <td>{r.totalWeightKg != null ? `${r.totalWeightKg}kg` : '—'}</td>
                   <td><span className={`pill ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span></td>
@@ -70,7 +74,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               )
             })}
             {reportList.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>まだ日報がありません</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>まだ日報がありません</td></tr>
             )}
           </tbody>
         </table>

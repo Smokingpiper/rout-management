@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments, missedSpotOverrides } from '@/db/schema'
+import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments, missedSpotOverrides, users } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import ReportTrackPanel from '@/components/ReportTrackPanel'
@@ -32,18 +32,23 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
 
   const trackPoints = await db.select().from(routeTrackPoints).where(eq(routeTrackPoints.dailyReportId, report.id))
   const overrides = await db.select().from(missedSpotOverrides).where(eq(missedSpotOverrides.dailyReportId, report.id))
+  const submitter = report.submittedBy ? (await db.select().from(users).where(eq(users.id, report.submittedBy)))[0] : null
 
   return (
     <>
       <div className="breadcrumb"><a href="/admin/reports">日報一覧</a> / {report.reportDate}</div>
       <div className="page-title">{area?.name} — {route?.name}</div>
-      <div className="page-desc">{report.reportDate} ・ {wasteType?.name ?? '品目未設定'} ・ <span className="pill muted">{STATUS_LABEL[report.status]}</span></div>
+      <div className="page-desc">
+        {report.reportDate} ・ {wasteType?.name ?? '品目未設定'} ・ <span className="pill muted">{STATUS_LABEL[report.status]}</span>
+        {submitter && <> ・ 👤{submitter.name || submitter.email}</>}
+      </div>
 
       <div className="card">
         <div className="card-title">提出内容</div>
         <table>
           <tbody>
-            <tr><td style={{ color: 'var(--text-3)', width: 140 }}>総重量</td><td>{report.totalWeightKg != null ? `${report.totalWeightKg}kg` : '未入力'}</td></tr>
+            <tr><td style={{ color: 'var(--text-3)', width: 140 }}>提出ドライバー</td><td>{submitter ? (submitter.name || submitter.email) : <span style={{ color: 'var(--text-3)' }}>未提出</span>}</td></tr>
+            <tr><td style={{ color: 'var(--text-3)' }}>総重量</td><td>{report.totalWeightKg != null ? `${report.totalWeightKg}kg` : '未入力'}</td></tr>
             <tr><td style={{ color: 'var(--text-3)' }}>メモ</td><td>{report.memo || '—'}</td></tr>
             <tr><td style={{ color: 'var(--text-3)' }}>スポット数</td><td>{spotList.length}件（うち要注意 {alertSpots.length}件）</td></tr>
             <tr><td style={{ color: 'var(--text-3)' }}>要注意スポット確認</td><td>{ackedForThisReport.length} / {alertSpots.length}件</td></tr>
