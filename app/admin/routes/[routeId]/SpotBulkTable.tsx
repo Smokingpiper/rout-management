@@ -14,10 +14,11 @@ type Spot = {
 type Driver = { id: string; name: string | null; email: string | null }
 
 export default function SpotBulkTable({
-  routeId, spotList, noteBySpot, assigneeCountBySpot, driverList,
+  routeId, spotList, allMatchingSpotIds, noteBySpot, assigneeCountBySpot, driverList,
 }: {
   routeId: string
   spotList: Spot[]
+  allMatchingSpotIds: string[]
   noteBySpot: Record<string, string>
   assigneeCountBySpot: Record<string, number>
   driverList: Driver[]
@@ -27,7 +28,8 @@ export default function SpotBulkTable({
   const [assigneeUserId, setAssigneeUserId] = useState('')
   const [applying, setApplying] = useState(false)
 
-  const allSelected = spotList.length > 0 && spotList.every(s => selected.has(s.id))
+  // 「全選択」は表示中のページだけでなく、絞り込み条件に一致する全件を対象にする
+  const allSelected = allMatchingSpotIds.length > 0 && allMatchingSpotIds.every(id => selected.has(id))
 
   function toggleOne(id: string) {
     setSelected(prev => {
@@ -39,7 +41,7 @@ export default function SpotBulkTable({
   }
 
   function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(spotList.map(s => s.id)))
+    setSelected(allSelected ? new Set() : new Set(allMatchingSpotIds))
   }
 
   async function bulkPatch(body: Record<string, unknown>) {
@@ -69,7 +71,7 @@ export default function SpotBulkTable({
     <>
       {selected.size > 0 && (
         <div className="card" style={{ background: 'var(--accent-dim)', borderColor: 'var(--accent)', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-          <b style={{ color: 'var(--accent)' }}>{selected.size}件選択中</b>
+          <b style={{ color: 'var(--accent)' }}>{selected.size}件選択中{allMatchingSpotIds.length > spotList.length ? `（絞り込み全${allMatchingSpotIds.length}件中）` : ''}</b>
           <button className="btn sm primary" disabled={applying} onClick={() => bulkPatch({ isAlertSpot: true })}>要注意に設定</button>
           <button className="btn sm" disabled={applying} onClick={() => bulkPatch({ isAlertSpot: false })}>要注意を解除</button>
           <input
@@ -111,7 +113,14 @@ export default function SpotBulkTable({
         <table>
           <thead>
             <tr>
-              <th className="checkbox-cell"><input type="checkbox" checked={allSelected} onChange={toggleAll} /></th>
+              <th className="checkbox-cell">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  title={`絞り込み条件に一致する全${allMatchingSpotIds.length}件を選択/解除`}
+                />
+              </th>
               <th>No.</th>
               <th>住所</th>
               <th>緯度・経度</th>

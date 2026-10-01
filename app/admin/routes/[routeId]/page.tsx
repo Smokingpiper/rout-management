@@ -53,6 +53,14 @@ export default async function RouteSpotsPage({
     .limit(PAGE_SIZE)
     .offset((page - 1) * PAGE_SIZE)
 
+  // 一括操作の「全選択」をページをまたいで効かせるため、絞り込み条件に一致する
+  // 全件のIDだけ別途取得する（件数が多くてもID文字列だけなので軽量）
+  const allMatchingSpots = await db
+    .select({ id: spots.id })
+    .from(spots)
+    .where(whereClause)
+    .orderBy(asc(spots.orderInRoute))
+
   const spotIds = spotList.map(s => s.id)
   const notes = spotIds.length
     ? await db.select().from(spotNotes).where(inArray(spotNotes.spotId, spotIds))
@@ -116,6 +124,7 @@ export default async function RouteSpotsPage({
           <SpotBulkTable
             routeId={routeId}
             spotList={spotList}
+            allMatchingSpotIds={allMatchingSpots.map(s => s.id)}
             noteBySpot={noteBySpot}
             assigneeCountBySpot={assigneeCountBySpot}
             driverList={driverList.map(d => ({ id: d.id, name: d.name, email: d.email }))}
