@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { areas, routes, dailyReports, userRoutes } from '@/db/schema'
+import { areas, routes, dailyReports, userRoutes, users } from '@/db/schema'
 import { desc, eq, inArray } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth'
 
@@ -16,15 +16,17 @@ const STATUS_CLASS: Record<string, string> = {
   approved: 'ok',
 }
 
-export default async function DriverReportsPage() {
+export default async function DriverReportsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const user = await getCurrentUser()
+  const { q } = await searchParams
+  const query = (q ?? '').trim()
 
   const myAssignments = user
     ? await db.select().from(userRoutes).where(eq(userRoutes.userId, user.id))
     : []
   const routeIds = [...new Set(myAssignments.map(a => a.routeId))]
 
-  const reportList = routeIds.length
+  let reportList = routeIds.length
     ? await db.select().from(dailyReports).where(inArray(dailyReports.routeId, routeIds)).orderBy(desc(dailyReports.reportDate))
     : []
 
@@ -33,31 +35,53 @@ export default async function DriverReportsPage() {
   const routeList = routeIds.length ? await db.select().from(routes).where(inArray(routes.id, routeIds)) : []
   const routeById = new Map(routeList.map(r => [r.id, r]))
 
+  const submitterIds = [...new Set(reportList.map(r => r.submittedBy).filter((id): id is string => !!id))]
+  const submitterList = submitterIds.length ? await db.select().from(users).where(inArray(users.id, submitterIds)) : []
+  const submitterById = new Map(submitterList.map(u => [u.id, u]))
+
+  if (query) {
+    const matchRouteIds = new Set(
+      routeList.filter(r => r.name.includes(query) || (areaById.get(r.areaId)?.name.includes(query))).map(r => r.id)
+    )
+    const matchSubmitterIds = new Set(
+      submitterList.filter(u => (u.name ?? '').includes(query) || (u.email ?? '').includes(query)).map(u => u.id)
+    )
+    reportList = reportList.filter(r => matchRouteIds.has(r.routeId) || (r.submittedBy != null && matchSubmitterIds.has(r.submittedBy)))
+  }
+
   return (
     <>
       <div className="breadcrumb">ドライバー向け</div>
       <div className="page-title">日報一覧</div>
       <div className="page-desc">あなたの担当ルートの日報です。</div>
 
+      <form method="get" className="card" style={{ display: 'flex', gap: 10 }}>
+        <input className="search-input" style={{ flex: 1 }} type="text" name="q" defaultValue={query} placeholder="ルート名・エリア名・ドライバー名で検索" />
+        <button className="btn primary" type="submit">検索</button>
+        {query && <a className="btn" href="/driver/reports">クリア</a>}
+      </form>
+
       <div className="card">
         <table>
           <thead>
-            <tr><th>日付</th><th>ルート</th><th>状態</th><th></th></tr>
+            <tr><th>日付</th><th>ルート</th><th>ドライバー</th><th>状態</th><th></th></tr>
           </thead>
           <tbody>
             {reportList.map(r => {
               const route = routeById.get(r.routeId)
+              const submitter = r.submittedBy ? submitterById.get(r.submittedBy) : null
               return (
                 <tr key={r.id}>
                   <td>{r.reportDate}</td>
                   <td>{route ? `${areaById.get(route.areaId)?.name} — ${route.name}` : '—'}</td>
+                  <td>{submitter ? (submitter.name || submitter.email) : <span style={{ color: 'var(--text-3)' }}>未提出</span>}</td>
                   <td><span className={`pill ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span></td>
                   <td><a className="btn sm" href={`/driver/reports/${r.id}`}>詳細</a></td>
                 </tr>
               )
             })}
             {reportList.length === 0 && (
-              <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>まだ日報がありません</td></tr>
+              <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>まだ日報がありません</td></tr>
             )}
           </tbody>
         </table>
