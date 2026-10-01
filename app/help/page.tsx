@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function HelpPage() {
   const user = await getCurrentUser()
-  const role = user?.role ?? null
+  const roles = (user?.roles as string[] | undefined) ?? []
 
   return (
     <>
@@ -12,7 +12,7 @@ export default async function HelpPage() {
       <div className="page-title">📖 使い方ガイド</div>
       <div className="page-desc">ご自身の役割のセクションを開いてください。操作で迷ったらここに戻ってきてください。</div>
 
-      <details className="card" open={role === 'driver' || role == null}>
+      <details className="card" open={roles.includes('driver') || roles.length === 0}>
         <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 15 }}>🚚 ドライバー向け</summary>
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
@@ -44,7 +44,7 @@ export default async function HelpPage() {
         </div>
       </details>
 
-      <details className="card" open={role === 'company_admin'}>
+      <details className="card" open={roles.includes('company_admin')}>
         <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 15 }}>🏢 会社管理者向け</summary>
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
@@ -67,7 +67,7 @@ export default async function HelpPage() {
         </div>
       </details>
 
-      <details className="card" open={role === 'union_admin'}>
+      <details className="card" open={roles.includes('union_admin')}>
         <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 15 }}>🤝 協会管理者向け</summary>
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
 

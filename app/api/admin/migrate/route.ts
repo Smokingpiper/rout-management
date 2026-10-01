@@ -199,6 +199,11 @@ const STATEMENTS = [
     cleared_by text REFERENCES users(id),
     cleared_at timestamptz NOT NULL DEFAULT now()
   )`,
+
+  // 1人が複数ロールを兼ねられるようにする（例：会社管理者 かつ ドライバー）。
+  // 既存のrole列から配列へ移行し、role列自体はアプリ側からは参照しなくなる（削除はしない）
+  `ALTER TABLE users ADD COLUMN roles jsonb NOT NULL DEFAULT '[]'`,
+  `UPDATE users SET roles = jsonb_build_array(role) WHERE roles = '[]'::jsonb`,
 ]
 
 export async function POST(request: Request) {

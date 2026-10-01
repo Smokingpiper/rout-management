@@ -2,14 +2,11 @@ import { db } from '@/db/client'
 import { users, userRoutes, routes, areas } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
+import { formatRoles } from '@/lib/roleLabel'
+import UserRolesForm from './UserRolesForm'
 
 export const dynamic = 'force-dynamic'
 
-const ROLE_LABEL: Record<string, string> = {
-  union_admin: '協会管理者',
-  company_admin: '会社管理者',
-  driver: 'ドライバー',
-}
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
 
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ userId: string }> }) {
@@ -38,11 +35,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     <>
       <div className="breadcrumb"><a href="/admin/users">ユーザー管理</a> / {user.name || user.email}</div>
       <div className="page-title">{user.name || user.email}</div>
-      <div className="page-desc">{user.email} ・ {ROLE_LABEL[user.role]}</div>
+      <div className="page-desc">{user.email} ・ {formatRoles(user.roles as string[])}</div>
 
       <div className="card" style={{ display: 'flex', gap: 10 }}>
         <a className="btn primary" href={`/admin/users/${userId}/schedule`}>スケジュール設定</a>
       </div>
+
+      <UserRolesForm userId={userId} initialRoles={(user.roles as string[]) ?? []} />
 
       <div className="card">
         <div className="card-title">担当ルート（{rows.length}件）</div>

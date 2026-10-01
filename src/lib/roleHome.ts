@@ -4,6 +4,13 @@ export const HOME_BY_ROLE: Record<string, string> = {
   union_admin: '/union/companies',
 }
 
-export function homeHrefForRole(role: string | undefined | null): string {
-  return (role && HOME_BY_ROLE[role]) || '/driver'
+// 複数ロールを兼ねる場合の優先順位（管理系のロールを優先してホームにする）
+const ROLE_PRIORITY = ['union_admin', 'company_admin', 'driver']
+
+export function homeHrefForRoles(roles: string[] | undefined | null): string {
+  const list = roles ?? []
+  for (const role of ROLE_PRIORITY) {
+    if (list.includes(role)) return HOME_BY_ROLE[role]
+  }
+  return '/driver'
 }

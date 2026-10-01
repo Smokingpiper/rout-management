@@ -10,12 +10,25 @@ const ROLE_OPTIONS = [
 export default function NewUserForm() {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
-  const [role, setRole] = useState('driver')
+  const [roles, setRoles] = useState(new Set(['driver']))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{ email: string; password: string } | null>(null)
 
+  function toggleRole(value: string) {
+    setRoles(prev => {
+      const next = new Set(prev)
+      if (next.has(value)) next.delete(value)
+      else next.add(value)
+      return next
+    })
+  }
+
   async function submit() {
+    if (roles.size === 0) {
+      setError('ロールを1つ以上選択してください')
+      return
+    }
     setSubmitting(true)
     setError(null)
     setResult(null)
@@ -23,7 +36,7 @@ export default function NewUserForm() {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, role }),
+        body: JSON.stringify({ email, name, roles: [...roles] }),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -33,7 +46,7 @@ export default function NewUserForm() {
       setResult({ email, password: json.temporaryPassword })
       setEmail('')
       setName('')
-      setRole('driver')
+      setRoles(new Set(['driver']))
     } finally {
       setSubmitting(false)
     }
@@ -52,10 +65,15 @@ export default function NewUserForm() {
         <input className="text-input" value={name} onChange={e => setName(e.target.value)} />
       </div>
       <div className="field">
-        <label>ロール</label>
-        <select className="text-input" value={role} onChange={e => setRole(e.target.value)}>
-          {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <label>ロール（複数選択可）</label>
+        <div style={{ display: 'flex', gap: 16 }}>
+          {ROLE_OPTIONS.map(o => (
+            <label key={o.value} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 14 }}>
+              <input type="checkbox" checked={roles.has(o.value)} onChange={() => toggleRole(o.value)} />
+              {o.label}
+            </label>
+          ))}
+        </div>
       </div>
 
       {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{error}</p>}

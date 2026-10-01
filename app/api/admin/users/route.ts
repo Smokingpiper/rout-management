@@ -7,9 +7,10 @@ import { getPrimaryCompany } from '@/lib/company'
 const VALID_ROLES = ['driver', 'company_admin'] as const
 
 export async function POST(request: Request) {
-  const { email, name, role } = await request.json() as { email?: string; name?: string; role?: string }
+  const { email, name, roles } = await request.json() as { email?: string; name?: string; roles?: string[] }
   if (!email) return Response.json({ error: 'メールアドレスを入力してください' }, { status: 400 })
-  const resolvedRole = VALID_ROLES.includes(role as any) ? (role as typeof VALID_ROLES[number]) : 'driver'
+  const resolvedRoles = Array.isArray(roles) ? roles.filter(r => VALID_ROLES.includes(r as any)) : []
+  if (resolvedRoles.length === 0) resolvedRoles.push('driver')
 
   const [existing] = await db.select().from(users).where(eq(users.email, email))
   if (existing) return Response.json({ error: 'このメールアドレスは既に登録されています' }, { status: 409 })
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   const [user] = await db.insert(users).values({
     email,
     name: name || null,
-    role: resolvedRole,
+    roles: resolvedRoles,
     companyId: company?.id ?? null,
     unionId: company?.unionId ?? null,
     passwordHash,
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   }).returning()
 
   return Response.json({
-    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    user: { id: user.id, email: user.email, name: user.name, roles: user.roles },
     temporaryPassword,
   })
 }

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { homeHrefForRole } from '@/lib/roleHome'
+import { homeHrefForRoles } from '@/lib/roleHome'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
@@ -31,7 +31,7 @@ export default function LoginForm() {
         return
       }
       const next = searchParams.get('next')
-      window.location.href = next || homeHrefForRole(json.role)
+      window.location.href = next || homeHrefForRoles(json.roles)
     } finally {
       setSubmitting(false)
     }

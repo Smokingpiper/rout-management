@@ -211,7 +211,9 @@ export const users = pgTable('users', {
   name:               text('name'),
   email:              text('email').unique(),
   phoneNumber:        text('phone_number'),
-  role:               userRoleEnum('role').notNull(),
+  // 1人が複数ロールを兼ねられるようにする（例：会社管理者 かつ ドライバー）。
+  // 値は user_role enum と同じ文字列（'union_admin'|'company_admin'|'driver'）の配列
+  roles:              jsonb('roles').notNull().default('[]'),
   // 簡易パスワード認証（Google認証は後日導入予定）。招待時に発行した一時パスワードのハッシュを保持する
   passwordHash:       text('password_hash'),
   mustChangePassword: boolean('must_change_password').default(true).notNull(),

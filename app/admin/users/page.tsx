@@ -2,15 +2,10 @@ import { db } from '@/db/client'
 import { users } from '@/db/schema'
 import { getPrimaryCompany } from '@/lib/company'
 import { eq, desc } from 'drizzle-orm'
+import { formatRoles } from '@/lib/roleLabel'
 import NewUserForm from './NewUserForm'
 
 export const dynamic = 'force-dynamic'
-
-const ROLE_LABEL: Record<string, string> = {
-  union_admin: '協会管理者',
-  company_admin: '会社管理者',
-  driver: 'ドライバー',
-}
 
 export default async function AdminUsersPage() {
   const company = await getPrimaryCompany()
@@ -36,7 +31,7 @@ export default async function AdminUsersPage() {
                 {u.email}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                {ROLE_LABEL[u.role]} ・ 登録日 {u.createdAt.toISOString().slice(0, 10)}
+                {formatRoles(u.roles as string[])} ・ 登録日 {u.createdAt.toISOString().slice(0, 10)}
               </div>
             </div>
             <a className="btn sm" href={`/admin/users/${u.id}`}>詳細</a>

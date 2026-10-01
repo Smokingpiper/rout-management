@@ -1,6 +1,6 @@
 import '@/components/shared.css'
 import { getCurrentUser } from '@/lib/auth'
-import { homeHrefForRole } from '@/lib/roleHome'
+import { homeHrefForRoles } from '@/lib/roleHome'
 import ChangePasswordForm from './ChangePasswordForm'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +14,7 @@ export default async function ChangePasswordPage() {
       {user ? (
         <>
           <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 20 }}>{user.email} としてログイン中</p>
-          <ChangePasswordForm requireCurrent={!user.mustChangePassword} homeHref={homeHrefForRole(user.role)} />
+          <ChangePasswordForm requireCurrent={!user.mustChangePassword} homeHref={homeHrefForRoles(user.roles as string[])} />
         </>
       ) : (
         <p style={{ fontSize: 14 }}>ログインしてください。<a href="/login">ログインページへ</a></p>
