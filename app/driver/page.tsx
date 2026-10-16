@@ -77,7 +77,7 @@ export default async function TodayRoutePage() {
         </div>
         {!inspectionReady && (
           <p style={{ fontSize: 12.5, color: "var(--text-2)", margin: "8px 0 10px" }}>
-            ルートの収集を開始する前に、日常点検・始業点呼を入力してください。ルートの「点検して収集を開始する」を押すと点検画面に進み、完了後にルートが始まってGPS記録も自動でONになります。
+            ルートの収集を開始する前に、日常点検・始業点呼を入力してください。点検が済むまでルート画面には入れません。ルートの「点検して…」ボタンから点検画面に進み、完了するとルートが始まってGPS記録も自動でONになります。
           </p>
         )}
         <a className={inspectionReady ? "btn sm" : "btn sm primary"} style={{ marginTop: inspectionReady ? 8 : 0 }} href="/driver/inspection">
@@ -104,9 +104,9 @@ export default async function TodayRoutePage() {
             <div className="grid-cards" style={{ gridTemplateColumns: report?.status === 'in_progress' || !report ? '1fr 1fr 1fr' : '1fr 1fr' }}>
               <a
                 className="btn primary"
-                href={report ? `/driver/routes/${route.id}` : needsInspection ? `/driver/inspection?next=${encodeURIComponent(startHref)}` : startHref}
+                href={needsInspection ? `/driver/inspection?next=${encodeURIComponent(startHref)}` : report ? `/driver/routes/${route.id}` : startHref}
               >
-                {report ? '続ける →' : needsInspection ? '点検して収集を開始する →' : '収集を開始する →'}
+                {needsInspection ? (report ? '点検して続ける →' : '点検して収集を開始する →') : report ? '続ける →' : '収集を開始する →'}
               </a>
               <a className="btn" href={`/driver/routes/${route.id}/track`}>🛰 軌跡マップ</a>
               {(report?.status === 'in_progress' || !report) && (

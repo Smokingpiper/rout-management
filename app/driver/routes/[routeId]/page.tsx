@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { getOrCreateTodaysReport } from '@/lib/daily-report'
 import { getCurrentUser } from '@/lib/auth'
 import { filterSpotsForDriver } from '@/lib/driverSpots'
+import { requireInspectionForPatrol } from '@/lib/inspectionGate'
 import RunScreen from './RunScreen'
 
 export const dynamic = 'force-dynamic'
@@ -22,9 +23,10 @@ export default async function DriverRoutePage({
   const [area] = await db.select().from(areas).where(eq(areas.id, route.areaId))
 
   const report = await getOrCreateTodaysReport(routeId)
+  const user = await getCurrentUser()
+  await requireInspectionForPatrol(user?.id, routeId, report.status)
 
   const allSpots = await db.select().from(spots).where(eq(spots.routeId, routeId)).orderBy(spots.orderInRoute)
-  const user = await getCurrentUser()
   const spotList = user ? await filterSpotsForDriver(allSpots, user.id) : allSpots
   const alertSpotIds = spotList.filter(s => s.isAlertSpot).map(s => s.id)
 

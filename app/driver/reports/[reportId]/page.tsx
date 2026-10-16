@@ -1,8 +1,9 @@
 import { db } from '@/db/client'
-import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments, missedSpotOverrides } from '@/db/schema'
-import { eq, inArray } from 'drizzle-orm'
+import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments, missedSpotOverrides, dailyInspections } from '@/db/schema'
+import { and, eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import ReportTrackPanel from '@/components/ReportTrackPanel'
+import InspectionSummaryCard from '@/components/InspectionSummaryCard'
 import PhotoViewer from '@/components/PhotoViewer'
 import { getCurrentUser } from '@/lib/auth'
 import { filterSpotsForDriver } from '@/lib/driverSpots'
@@ -36,6 +37,16 @@ export default async function DriverReportDetailPage({ params }: { params: Promi
   const trackPoints = await db.select().from(routeTrackPoints).where(eq(routeTrackPoints.dailyReportId, report.id))
   const overrides = await db.select().from(missedSpotOverrides).where(eq(missedSpotOverrides.dailyReportId, report.id))
 
+  // 作業前点検は自分が提出した日報にだけ表示する（同じルートの他のドライバーの
+  // 点呼結果＝飲酒・体調の記録は、ここでは見せない。全体の確認は会社管理者の画面で行う）
+  const isOwnReport = !!user && report.submittedBy === user.id
+  const [inspection] = isOwnReport
+    ? await db.select().from(dailyInspections).where(and(
+        eq(dailyInspections.userId, user!.id),
+        eq(dailyInspections.inspectionDate, report.reportDate),
+      ))
+    : []
+
   return (
     <>
       <div className="breadcrumb"><a href="/driver/reports">日報一覧</a> / {report.reportDate}</div>
@@ -54,6 +65,10 @@ export default async function DriverReportDetailPage({ params }: { params: Promi
           </tbody>
         </table>
       </div>
+
+      {isOwnReport && (
+        <InspectionSummaryCard inspection={inspection ?? null} emptyMessage="この日の作業前点検の記録はありません。" />
+      )}
 
       <div className="card">
         <div className="card-title">添付写真</div>

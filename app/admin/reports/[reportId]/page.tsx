@@ -1,8 +1,9 @@
 import { db } from '@/db/client'
-import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments, missedSpotOverrides, users } from '@/db/schema'
-import { eq, inArray } from 'drizzle-orm'
+import { dailyReports, routes, areas, wasteTypes, spots, routeTrackPoints, spotAlertAcknowledgments, missedSpotOverrides, users, dailyInspections } from '@/db/schema'
+import { and, eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import ReportTrackPanel from '@/components/ReportTrackPanel'
+import InspectionSummaryCard from '@/components/InspectionSummaryCard'
 import ApproveActions from './ApproveActions'
 import PhotoViewer from '@/components/PhotoViewer'
 
@@ -33,6 +34,13 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
   const trackPoints = await db.select().from(routeTrackPoints).where(eq(routeTrackPoints.dailyReportId, report.id))
   const overrides = await db.select().from(missedSpotOverrides).where(eq(missedSpotOverrides.dailyReportId, report.id))
   const submitter = report.submittedBy ? (await db.select().from(users).where(eq(users.id, report.submittedBy)))[0] : null
+  // 日報の中にその日の作業前点検を載せる（提出したドライバー × 日報の日付で特定する）
+  const [inspection] = report.submittedBy
+    ? await db.select().from(dailyInspections).where(and(
+        eq(dailyInspections.userId, report.submittedBy),
+        eq(dailyInspections.inspectionDate, report.reportDate),
+      ))
+    : []
 
   return (
     <>
@@ -56,6 +64,12 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
           </tbody>
         </table>
       </div>
+
+      <InspectionSummaryCard
+        inspection={inspection ?? null}
+        emptyMessage={report.submittedBy ? 'この日の作業前点検の記録はありません。' : '日報の提出後に、提出したドライバーの作業前点検が表示されます。'}
+        detailHref={inspection ? `/admin/inspections/${inspection.id}` : undefined}
+      />
 
       <div className="card">
         <div className="card-title">添付写真</div>

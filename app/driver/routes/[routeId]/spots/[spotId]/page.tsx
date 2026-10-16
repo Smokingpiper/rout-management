@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { getOrCreateTodaysReport } from '@/lib/daily-report'
 import { getCurrentUser } from '@/lib/auth'
 import { filterSpotsForDriver } from '@/lib/driverSpots'
+import { requireInspectionForPatrol } from '@/lib/inspectionGate'
 import SpotNavScreen from './SpotNavScreen'
 
 export const dynamic = 'force-dynamic'
@@ -26,6 +27,7 @@ export default async function SpotNavPage({ params }: { params: Promise<{ routeI
   const nextSpot = index >= 0 && index < spotList.length - 1 ? spotList[index + 1] : null
 
   const report = await getOrCreateTodaysReport(routeId)
+  await requireInspectionForPatrol(user?.id, routeId, report.status)
 
   let acked = false
   if (spot.isAlertSpot) {
