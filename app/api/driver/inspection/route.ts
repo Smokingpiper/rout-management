@@ -55,14 +55,17 @@ export async function PUT(request: Request) {
     nearMissNote?: string
   }
 
+  // 通常回収と早朝回収は紙の点検表も別なので、ドライバー×日付×区分で1件ずつ記録する
+  const shiftType = VALID_SHIFTS.has(body.shiftType ?? '') ? body.shiftType! : 'normal'
   const inspectionDate = todayStr()
   const [existing] = await db.select().from(dailyInspections).where(and(
     eq(dailyInspections.userId, user.id),
     eq(dailyInspections.inspectionDate, inspectionDate),
+    eq(dailyInspections.shiftType, shiftType),
   ))
 
   const values = {
-    shiftType: VALID_SHIFTS.has(body.shiftType ?? '') ? body.shiftType! : 'normal',
+    shiftType,
     vehicleNumber: (body.vehicleNumber ?? '').trim().slice(0, 50) || null,
     checks: cleanChecks(body.checks),
     startRollCall: cleanRollCall(body.startRollCall, (existing?.startRollCall ?? null) as RollCall | null),

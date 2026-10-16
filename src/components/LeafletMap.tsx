@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 
-export type MapMarker = { lat: number; lng: number; alert?: boolean; missed?: boolean; target?: boolean; unvisited?: boolean }
+export type MapMarker = { id?: string; lat: number; lng: number; alert?: boolean; missed?: boolean; target?: boolean; unvisited?: boolean }
 export type LatLng = { lat: number; lng: number }
 
 // MapTilerの256pxラスタタイル。512px版(streets-v4/{z}/{x}/{y}.png)を使う場合は
@@ -12,14 +12,18 @@ const TILE_URL = (key: string) => `https://api.maptiler.com/maps/streets-v4/256/
 const ATTRIBUTION = '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank" rel="noreferrer">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors'
 
 export default function LeafletMap({
-  markers, path, height = 300, currentLocation, focusLatLng,
+  markers, path, height = 300, currentLocation, focusLatLng, onMarkerClick,
 }: {
   markers: MapMarker[]
   path?: LatLng[]
   height?: number
   currentLocation?: LatLng | null
   focusLatLng?: LatLng | null
+  onMarkerClick?: (id: string) => void
 }) {
+  // マーカーのクリック処理は再描画のたびに作り直さないよう ref 経由で最新のものを呼ぶ
+  const onMarkerClickRef = useRef(onMarkerClick)
+  onMarkerClickRef.current = onMarkerClick
   const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
@@ -74,6 +78,10 @@ export default function LeafletMap({
               fillColor: m.alert ? '#F59E0B' : m.target ? '#4A7CF6' : m.unvisited ? '#E5484D' : '#3EA96B',
               fillOpacity: 1,
             })
+        if (m.id) {
+          const markerId = m.id
+          marker.on('click', () => onMarkerClickRef.current?.(markerId))
+        }
         marker.addTo(map)
         overlaysRef.current.push(marker)
         boundsPoints.push([m.lat, m.lng])

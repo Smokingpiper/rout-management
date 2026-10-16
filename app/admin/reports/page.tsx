@@ -1,6 +1,6 @@
 import { db } from '@/db/client'
-import { dailyReports, routes, areas, wasteTypes, users } from '@/db/schema'
-import { desc } from 'drizzle-orm'
+import { wasteTypes } from '@/db/schema'
+import { queryReportList, type ReportFilters } from '@/lib/reportQuery'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,27 +15,28 @@ const STATUS_CLASS: Record<string, string> = {
   approved: 'ok',
 }
 
-export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { q } = await searchParams
-  const query = (q ?? '').trim()
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; from?: string; to?: string; status?: string; type?: string }>
+}) {
+  const sp = await searchParams
+  const filters: ReportFilters = {
+    q: (sp.q ?? '').trim(),
+    from: (sp.from ?? '').trim(),
+    to: (sp.to ?? '').trim(),
+    status: (sp.status ?? '').trim(),
+    type: (sp.type ?? '').trim(),
+  }
 
-  const routeList = await db.select().from(routes)
-  const routeById = new Map(routeList.map(r => [r.id, r]))
-  const areaList = await db.select().from(areas)
-  const areaById = new Map(areaList.map(a => [a.id, a]))
+  const { reportList, routeById, areaById, userById } = await queryReportList(filters, 300)
   const wasteTypeList = await db.select().from(wasteTypes)
   const wasteTypeById = new Map(wasteTypeList.map(w => [w.id, w]))
-  const userList = await db.select().from(users)
-  const userById = new Map(userList.map(u => [u.id, u]))
 
-  let reportList = await db.select().from(dailyReports).orderBy(desc(dailyReports.reportDate)).limit(200)
-
-  if (query) {
-    const matchRouteIds = new Set(
-      routeList.filter(r => r.name.includes(query) || (areaById.get(r.areaId)?.name.includes(query))).map(r => r.id)
-    )
-    reportList = reportList.filter(r => matchRouteIds.has(r.routeId))
-  }
+  const printParams = new URLSearchParams(
+    Object.entries(filters).filter(([, v]) => v) as [string, string][],
+  ).toString()
+  const hasFilter = Object.values(filters).some(Boolean)
 
   return (
     <>
@@ -43,11 +44,33 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <div className="page-title">日報一覧・承認</div>
       <div className="page-desc">ドライバーが提出した日報を確認・承認します。総重量・種別は1日1件、軌跡は詳細画面で確認できます。</div>
 
-      <form method="get" className="card" style={{ display: 'flex', gap: 10 }}>
-        <input className="search-input" style={{ flex: 1 }} type="text" name="q" defaultValue={query} placeholder="ルート名・エリア名で検索" />
+      <form method="get" className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+        <input className="search-input" style={{ flex: '1 1 220px' }} type="text" name="q" defaultValue={filters.q} placeholder="ルート名・エリア名・ドライバー名で検索" />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
+          期間
+          <input className="text-input" type="date" name="from" defaultValue={filters.from} />
+          〜
+          <input className="text-input" type="date" name="to" defaultValue={filters.to} />
+        </label>
+        <select className="text-input" name="status" defaultValue={filters.status}>
+          <option value="">状態：すべて</option>
+          {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <select className="text-input" name="type" defaultValue={filters.type}>
+          <option value="">区分：すべて</option>
+          <option value="regular">通常回収</option>
+          <option value="early">早朝回収</option>
+        </select>
         <button className="btn primary" type="submit">検索</button>
-        {query && <a className="btn" href="/admin/reports">クリア</a>}
+        {hasFilter && <a className="btn" href="/admin/reports">クリア</a>}
       </form>
+
+      <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
+          現在の絞り込み条件に一致する日報 <b>{reportList.length}件</b> を、紙の日報と同じ体裁で一括印刷できます。
+        </span>
+        <a className="btn primary" href={`/admin/reports/print${printParams ? `?${printParams}` : ''}`} target="_blank" rel="noreferrer">🖨 一括印刷</a>
+      </div>
 
       <div className="card">
         <table>
@@ -56,15 +79,16 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </thead>
           <tbody>
             {reportList.map(r => {
-              const route = routeById.get(r.routeId)
+              const route = r.routeId ? routeById.get(r.routeId) : null
               const area = route ? areaById.get(route.areaId) : null
               const wt = r.wasteTypeId ? wasteTypeById.get(r.wasteTypeId) : null
               const submitter = r.submittedBy ? userById.get(r.submittedBy) : null
+              const isEarly = r.collectionType === 'early'
               return (
                 <tr key={r.id}>
                   <td>{r.reportDate}</td>
-                  <td>{area?.name ?? '—'}</td>
-                  <td>{route?.name ?? '—'}</td>
+                  <td>{isEarly ? '—' : (area?.name ?? '—')}</td>
+                  <td>{isEarly ? <span className="pill info">早朝回収</span> : (route?.name ?? '—')}</td>
                   <td>{submitter ? (submitter.name || submitter.email) : <span style={{ color: 'var(--text-3)' }}>未提出</span>}</td>
                   <td>{wt?.name ?? '—'}</td>
                   <td>{r.totalWeightKg != null ? `${r.totalWeightKg}kg` : '—'}</td>
@@ -74,7 +98,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               )
             })}
             {reportList.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>まだ日報がありません</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px 0' }}>該当する日報がありません</td></tr>
             )}
           </tbody>
         </table>

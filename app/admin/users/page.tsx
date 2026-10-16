@@ -31,7 +31,7 @@ export default async function AdminUsersPage() {
                 {u.email}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                {formatRoles(u.roles as string[])} ・ 登録日 {u.createdAt.toISOString().slice(0, 10)}
+                {formatRoles(u.roles as string[], u.adminRank)} ・ 登録日 {u.createdAt.toISOString().slice(0, 10)}
               </div>
             </div>
             <a className="btn sm" href={`/admin/users/${u.id}`}>詳細</a>

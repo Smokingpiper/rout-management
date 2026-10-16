@@ -19,7 +19,8 @@ const STATUS_CLASS: Record<string, string> = {
 }
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
 
-export default async function TodayRoutePage() {
+export default async function TodayRoutePage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
+  const { type } = await searchParams
   const user = await getCurrentUser()
   const today = todayStr()
   const dow = todayDayOfWeek()
@@ -49,12 +50,25 @@ export default async function TodayRoutePage() {
     : []
   const spotCountByRoute = new Map(spotCounts.map(r => [r.routeId, r.n]))
 
-  // 作業前点検（点検項目と始業点呼がそろっていれば、そのままルートを開始できる）
-  const [inspection] = user
+  // 今日の作業前点検（通常と早朝は別々）。点検項目と始業点呼がそろっていれば開始できる
+  const inspections = user
     ? await db.select().from(dailyInspections).where(and(eq(dailyInspections.userId, user.id), eq(dailyInspections.inspectionDate, today)))
     : []
-  const inspectionSummary = inspection ? summarizeInspection(inspection) : null
-  const inspectionReady = !!inspectionSummary && inspectionSummary.checksDone && inspectionSummary.startDone
+  const readyFor = (shift: 'normal' | 'early') => {
+    const rec = inspections.find(i => i.shiftType === shift)
+    const s = rec ? summarizeInspection(rec) : null
+    return { summary: s, ready: !!s && s.checksDone && s.startDone }
+  }
+  const normal = readyFor('normal')
+  const early = readyFor('early')
+
+  const [earlyReport] = user
+    ? await db.select().from(dailyReports).where(and(
+        eq(dailyReports.collectionType, 'early'),
+        eq(dailyReports.reportDate, today),
+        eq(dailyReports.startedBy, user.id),
+      ))
+    : []
 
   const sorted = [...routeList].sort((a, b) => {
     const areaA = areaById.get(a.areaId)?.name ?? ''
@@ -62,32 +76,42 @@ export default async function TodayRoutePage() {
     return areaA.localeCompare(areaB, 'ja') || a.name.localeCompare(b.name, 'ja')
   })
 
+  const inspectionPill = (r: ReturnType<typeof readyFor>) => r.ready
+    ? <span className="pill ok">点検済</span>
+    : <span className="pill warn">点検未完了{r.summary ? `（${r.summary.answered}/${r.summary.total}）` : ''}</span>
+
   return (
     <>
       <div className="breadcrumb">ドライバー向け</div>
       <div className="page-title">今日のルート（{today}・{DAY_LABELS[dow]}曜日）</div>
-      <div className="page-desc">本日担当のルートです。ルートを選んで収集を開始してください。</div>
+      <div className="page-desc">回収の種類を選んでください。作業前点検（日常点検・点呼）を済ませると、回収が始まりGPS記録も自動でONになります。</div>
 
-      <div className="card" style={inspectionReady ? undefined : { background: "var(--warn-dim)", borderColor: "var(--warn)" }}>
-        <div className="card-title" style={{ marginBottom: 0 }}>
-          作業前点検
-          {inspectionReady
-            ? <span className="pill ok">入力済み</span>
-            : <span className="pill warn">未完了{inspectionSummary ? `（点検 ${inspectionSummary.answered}/${inspectionSummary.total}・始業点呼${inspectionSummary.startDone ? "済" : "未"}）` : ""}</span>}
+      <div className="grid-cards" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 16 }}>
+        <div className="card" style={{ marginBottom: 0, textAlign: 'center' }}>
+          <a className="btn primary" style={{ width: '100%', minHeight: 56, fontSize: 16 }} href="/driver/begin?type=normal">🚚 通常回収</a>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', margin: '8px 0 6px' }}>本日の担当ルート {sorted.length}件</div>
+          {inspectionPill(normal)}
+          <div style={{ marginTop: 8 }}><a href="/driver/inspection?type=normal" style={{ fontSize: 11.5, color: 'var(--accent-2)' }}>点検内容を開く</a></div>
         </div>
-        {!inspectionReady && (
-          <p style={{ fontSize: 12.5, color: "var(--text-2)", margin: "8px 0 10px" }}>
-            ルートの収集を開始する前に、日常点検・始業点呼を入力してください。点検が済むまでルート画面には入れません。ルートの「点検して…」ボタンから点検画面に進み、完了するとルートが始まってGPS記録も自動でONになります。
-          </p>
-        )}
-        <a className={inspectionReady ? "btn sm" : "btn sm primary"} style={{ marginTop: inspectionReady ? 8 : 0 }} href="/driver/inspection">
-          {inspectionReady ? "点検内容を確認・修正する" : "作業前点検を入力する →"}
-        </a>
+        <div className="card" style={{ marginBottom: 0, textAlign: 'center' }}>
+          <a className="btn primary" style={{ width: '100%', minHeight: 56, fontSize: 16, background: 'var(--accent-2)', borderColor: 'var(--accent-2)' }} href="/driver/begin?type=early">🌅 早朝回収</a>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', margin: '8px 0 6px' }}>
+            ルートなし・自由にスポットを回る
+            {earlyReport && <span className={`pill ${STATUS_CLASS[earlyReport.status]}`} style={{ marginLeft: 6 }}>{STATUS_LABEL[earlyReport.status]}</span>}
+          </div>
+          {inspectionPill(early)}
+          <div style={{ marginTop: 8 }}><a href="/driver/inspection?type=early" style={{ fontSize: 11.5, color: 'var(--accent-2)' }}>点検内容を開く</a></div>
+        </div>
+      </div>
+
+      <div style={{ fontWeight: 700, fontSize: 14, margin: '4px 0 8px' }}>
+        本日の担当ルート（通常回収）
+        {type === 'normal' && <span className="pill info" style={{ marginLeft: 8 }}>回収するルートを選んでください</span>}
       </div>
 
       {sorted.map(route => {
         const startHref = `/driver/routes/${route.id}?start=1`
-        const needsInspection = !inspectionReady
+        const needsInspection = !normal.ready
         const report = reportByRoute.get(route.id)
         const wt = route.defaultWasteTypeId ? wasteTypeById.get(route.defaultWasteTypeId) : null
         return (
@@ -104,7 +128,7 @@ export default async function TodayRoutePage() {
             <div className="grid-cards" style={{ gridTemplateColumns: report?.status === 'in_progress' || !report ? '1fr 1fr 1fr' : '1fr 1fr' }}>
               <a
                 className="btn primary"
-                href={needsInspection ? `/driver/inspection?next=${encodeURIComponent(startHref)}` : report ? `/driver/routes/${route.id}` : startHref}
+                href={needsInspection ? `/driver/inspection?type=normal&next=${encodeURIComponent(startHref)}` : report ? `/driver/routes/${route.id}` : startHref}
               >
                 {needsInspection ? (report ? '点検して続ける →' : '点検して収集を開始する →') : report ? '続ける →' : '収集を開始する →'}
               </a>

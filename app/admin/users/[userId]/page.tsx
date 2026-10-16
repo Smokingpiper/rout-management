@@ -35,13 +35,20 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     <>
       <div className="breadcrumb"><a href="/admin/users">ユーザー管理</a> / {user.name || user.email}</div>
       <div className="page-title">{user.name || user.email}</div>
-      <div className="page-desc">{user.email} ・ {formatRoles(user.roles as string[])}</div>
+      <div className="page-desc">{user.email} ・ {formatRoles(user.roles as string[], user.adminRank)}</div>
 
       <div className="card" style={{ display: 'flex', gap: 10 }}>
         <a className="btn primary" href={`/admin/users/${userId}/schedule`}>スケジュール設定</a>
       </div>
 
-      <UserRolesForm userId={userId} initialRoles={(user.roles as string[]) ?? []} />
+      <UserRolesForm
+        userId={userId}
+        initialRoles={(user.roles as string[]) ?? []}
+        initialRank={user.adminRank}
+        initialSealName={user.sealName}
+        userName={user.name}
+        userEmail={user.email}
+      />
 
       <div className="card">
         <div className="card-title">担当ルート（{rows.length}件）</div>

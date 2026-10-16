@@ -1,6 +1,6 @@
 import { db } from '@/db/client'
 import { areas, routes, dailyReports, userRoutes, users } from '@/db/schema'
-import { desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, or } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -26,8 +26,12 @@ export default async function DriverReportsPage({ searchParams }: { searchParams
     : []
   const routeIds = [...new Set(myAssignments.map(a => a.routeId))]
 
-  let reportList = routeIds.length
-    ? await db.select().from(dailyReports).where(inArray(dailyReports.routeId, routeIds)).orderBy(desc(dailyReports.reportDate))
+  // 担当ルートの日報に加えて、自分が行った早朝回収（ルートを持たない日報）も含める
+  const routeCondition = routeIds.length ? inArray(dailyReports.routeId, routeIds) : undefined
+  const earlyCondition = user ? and(eq(dailyReports.collectionType, 'early'), eq(dailyReports.startedBy, user.id)) : undefined
+  const where = routeCondition && earlyCondition ? or(routeCondition, earlyCondition) : (routeCondition ?? earlyCondition)
+  let reportList = where
+    ? await db.select().from(dailyReports).where(where).orderBy(desc(dailyReports.reportDate))
     : []
 
   const areaList = await db.select().from(areas)
@@ -46,7 +50,11 @@ export default async function DriverReportsPage({ searchParams }: { searchParams
     const matchSubmitterIds = new Set(
       submitterList.filter(u => (u.name ?? '').includes(query) || (u.email ?? '').includes(query)).map(u => u.id)
     )
-    reportList = reportList.filter(r => matchRouteIds.has(r.routeId) || (r.submittedBy != null && matchSubmitterIds.has(r.submittedBy)))
+    reportList = reportList.filter(r =>
+      (r.routeId != null && matchRouteIds.has(r.routeId)) ||
+      (r.collectionType === 'early' && '早朝回収'.includes(query)) ||
+      (r.submittedBy != null && matchSubmitterIds.has(r.submittedBy)),
+    )
   }
 
   return (
@@ -68,12 +76,12 @@ export default async function DriverReportsPage({ searchParams }: { searchParams
           </thead>
           <tbody>
             {reportList.map(r => {
-              const route = routeById.get(r.routeId)
+              const route = r.routeId ? routeById.get(r.routeId) : null
               const submitter = r.submittedBy ? submitterById.get(r.submittedBy) : null
               return (
                 <tr key={r.id}>
                   <td>{r.reportDate}</td>
-                  <td>{route ? `${areaById.get(route.areaId)?.name} — ${route.name}` : '—'}</td>
+                  <td>{r.collectionType === 'early' ? <span className="pill info">早朝回収</span> : route ? `${areaById.get(route.areaId)?.name} — ${route.name}` : '—'}</td>
                   <td>{submitter ? (submitter.name || submitter.email) : <span style={{ color: 'var(--text-3)' }}>未提出</span>}</td>
                   <td><span className={`pill ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span></td>
                   <td><a className="btn sm" href={`/driver/reports/${r.id}`}>詳細</a></td>

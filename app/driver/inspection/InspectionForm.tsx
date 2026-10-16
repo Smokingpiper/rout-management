@@ -7,7 +7,6 @@ import {
 } from '@/lib/inspection'
 
 type Initial = {
-  shiftType: ShiftType
   vehicleNumber: string
   checks: Checks
   startRollCall: RollCall | null
@@ -124,9 +123,8 @@ function RollCallCard({
 }
 
 export default function InspectionForm({
-  today, nextHref, driverName, initial,
-}: { today: string; nextHref: string | null; driverName: string; initial: Initial }) {
-  const [shiftType, setShiftType] = useState<ShiftType>(initial.shiftType)
+  today, shiftType, nextHref, driverName, initial,
+}: { today: string; shiftType: ShiftType; nextHref: string | null; driverName: string; initial: Initial }) {
   const [vehicleNumber, setVehicleNumber] = useState(initial.vehicleNumber)
   const [checks, setChecks] = useState<Checks>(initial.checks)
   const [startRollCall, setStartRollCall] = useState<RollCall>(initial.startRollCall ?? emptyRollCall())
@@ -188,6 +186,15 @@ export default function InspectionForm({
     }
   }
 
+  // 区分を切り替えるときは、入力途中の内容を保存してから別の点検表を開く
+  async function switchShift(next: ShiftType) {
+    if (next === shiftType) return
+    if (dirty.current && !(await save())) return
+    const qs = new URLSearchParams({ type: next })
+    if (nextHref) qs.set('next', nextHref)
+    window.location.href = `/driver/inspection?${qs}`
+  }
+
   const [going, setGoing] = useState(false)
   async function saveAndGo() {
     if (!nextHref) return
@@ -203,7 +210,7 @@ export default function InspectionForm({
     const t = setTimeout(save, 1200)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shiftType, vehicleNumber, checks, startRollCall, endRollCall, nearMissNote])
+  }, [vehicleNumber, checks, startRollCall, endRollCall, nearMissNote])
 
   const answered = ALL_CHECK_ITEMS.filter(i => checks[i.key]?.result).length
   const ngCount = ALL_CHECK_ITEMS.filter(i => checks[i.key]?.result === 'ng').length
@@ -236,10 +243,10 @@ export default function InspectionForm({
           />
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
-          <label>区分</label>
+          <label>区分（通常回収と早朝回収は別々に記録します）</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {SHIFT_TYPES.map(s => (
-              <Choice key={s.value} label={s.label} selected={shiftType === s.value} tone="neutral" onClick={() => { setShiftType(s.value); touch() }} />
+              <Choice key={s.value} label={s.label} selected={shiftType === s.value} tone="neutral" onClick={() => switchShift(s.value)} />
             ))}
           </div>
         </div>
@@ -312,11 +319,11 @@ export default function InspectionForm({
       {nextHref && (
         <div className="card" style={startReady ? { background: "var(--accent-dim)", borderColor: "var(--accent)" } : undefined}>
           <button className="btn primary" style={{ width: "100%", minHeight: 48, fontSize: 15 }} disabled={!startReady || going} onClick={saveAndGo}>
-            {going ? "保存しています…" : "点検を完了してルートを開始する →"}
+            {going ? "保存しています…" : shiftType === 'early' ? "点検を完了して早朝回収を開始する →" : "点検を完了してルートを開始する →"}
           </button>
           <p style={{ fontSize: 12, color: startReady ? "var(--accent)" : "var(--text-3)", marginTop: 8 }}>
             {startReady
-              ? "ルート画面に進み、GPS記録が自動でONになります。"
+              ? (shiftType === 'early' ? "早朝回収の画面に進み、GPS記録が自動でONになります。" : "ルート画面に進み、GPS記録が自動でONになります。")
               : `未入力: ${missing.join("・")}。入力するとルートを開始できます。`}
           </p>
         </div>

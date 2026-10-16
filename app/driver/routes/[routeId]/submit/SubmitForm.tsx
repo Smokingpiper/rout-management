@@ -6,8 +6,8 @@ type WasteType = { id: string; name: string }
 type Report = { id: string; wasteTypeId: string | null; totalWeightKg: number | null; memo: string | null; status: string }
 
 export default function SubmitForm({
-  routeId, report, wasteTypeList, spotCount,
-}: { routeId: string; report: Report; wasteTypeList: WasteType[]; spotCount: number }) {
+  report, wasteTypeList, spotCount, early = false,
+}: { routeId?: string; report: Report; wasteTypeList: WasteType[]; spotCount: number; early?: boolean }) {
   const [wasteTypeId, setWasteTypeId] = useState(report.wasteTypeId ?? '')
   const [weight, setWeight] = useState(report.totalWeightKg?.toString() ?? '')
   const [memo, setMemo] = useState(report.memo ?? '')
@@ -75,11 +75,13 @@ export default function SubmitForm({
   return (
     <div className="card">
       <div className="field">
-        <label>スポット到達状況</label>
-        <div style={{ fontSize: 13, color: 'var(--text-2)' }}>全{spotCount}件（上の軌跡・通過確認で周り損ないがないかご確認ください）</div>
+        <label>{early ? '回ったスポット' : 'スポット到達状況'}</label>
+        <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+          {early ? `${spotCount}件（上の一覧が日報に載ります。間違いがあれば早朝回収の画面で修正してください）` : `全${spotCount}件（上の軌跡・通過確認で周り損ないがないかご確認ください）`}
+        </div>
       </div>
       <div className="field">
-        <label>ゴミ種別（本日のルート全体で1種類）</label>
+        <label>{early ? 'ゴミ種別' : 'ゴミ種別（本日のルート全体で1種類）'}</label>
         <select value={wasteTypeId} onChange={e => setWasteTypeId(e.target.value)}>
           <option value="">未設定</option>
           {wasteTypeList.map(wt => <option key={wt.id} value={wt.id}>{wt.name}</option>)}

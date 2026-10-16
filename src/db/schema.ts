@@ -112,8 +112,13 @@ export const spotNotes = pgTable('spot_notes', {
 // ── 日報 ──────────────────────────────────────────────
 export const dailyReports = pgTable('daily_reports', {
   id:               id(),
-  routeId:          text('route_id').notNull().references(() => routes.id),
+  // 早朝回収はルートを持たないため null を許す
+  routeId:          text('route_id').references(() => routes.id),
   reportDate:       date('report_date').notNull(),
+  // 'regular'=通常回収（ルートあり）/ 'early'=早朝回収（ルートなし・ドライバーが自由にスポットを回る）
+  collectionType:   text('collection_type').notNull().default('regular'),
+  // 日報を開始したドライバー（早朝回収はドライバーごとに1日1件の日報になる）
+  startedBy:        text('started_by').references(() => users.id),
   submittedBy:      text('submitted_by').references(() => users.id),
   wasteTypeId:      text('waste_type_id').references(() => wasteTypes.id),
   totalWeightKg:    doublePrecision('total_weight_kg'),
@@ -123,6 +128,24 @@ export const dailyReports = pgTable('daily_reports', {
   status:           dailyReportStatusEnum('status').default('in_progress').notNull(),
   approvedBy:       text('approved_by').references(() => users.id),
   approvedAt:       timestamp('approved_at'),
+  // 押印欄：担当者=submittedBy/submittedAt、係長=chiefStamped*、課長=approvedBy/approvedAt（承認＝課長欄の押印）
+  submittedAt:      timestamp('submitted_at'),
+  chiefStampedBy:   text('chief_stamped_by').references(() => users.id),
+  chiefStampedAt:   timestamp('chief_stamped_at'),
+  // 早朝回収の「持ち去り車両」記録: [{ vehicleNumber, company, time }]
+  incidentLog:      jsonb('incident_log').notNull().default('[]'),
+})
+
+// ── 早朝回収で回ったスポット ─────────────────────────────
+// GPS通過で自動追加（source=gps）またはドライバーが手動追加（source=manual）。
+// ドライバーが外したスポットは excluded=true にして残し、GPSが再度自動追加しないようにする
+export const reportVisitedSpots = pgTable('report_visited_spots', {
+  id:            id(),
+  dailyReportId: text('daily_report_id').notNull().references(() => dailyReports.id),
+  spotId:        text('spot_id').notNull().references(() => spots.id),
+  source:        text('source').notNull().default('gps'),
+  excluded:      boolean('excluded').notNull().default(false),
+  visitedAt:     timestamp('visited_at').defaultNow().notNull(),
 })
 
 // ── 実走GPS軌跡 ────────────────────────────────────────
@@ -214,6 +237,10 @@ export const users = pgTable('users', {
   // 1人が複数ロールを兼ねられるようにする（例：会社管理者 かつ ドライバー）。
   // 値は user_role enum と同じ文字列（'union_admin'|'company_admin'|'driver'）の配列
   roles:              jsonb('roles').notNull().default('[]'),
+  // 会社管理者の中のランク。'manager'=課長 / 'chief'=係長 / null=未設定（従来どおり承認でき、課長欄に押印される）
+  adminRank:          text('admin_rank'),
+  // 電子印鑑に表示する文字。未設定なら氏名から自動で決める（src/lib/seal.ts）
+  sealName:           text('seal_name'),
   // 簡易パスワード認証（Google認証は後日導入予定）。招待時に発行した一時パスワードのハッシュを保持する
   passwordHash:       text('password_hash'),
   mustChangePassword: boolean('must_change_password').default(true).notNull(),

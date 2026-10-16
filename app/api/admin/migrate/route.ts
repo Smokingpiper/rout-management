@@ -220,6 +220,29 @@ const STATEMENTS = [
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (user_id, inspection_date)
   )`,
+
+  // 課長/係長ランク・電子印鑑・早朝回収・通常/早朝ごとの点検（2026-10-16）。
+  // 本番ではNeonのSQL Editorで同じ内容を実行済み
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_rank text`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS seal_name text`,
+  `ALTER TABLE daily_reports ALTER COLUMN route_id DROP NOT NULL`,
+  `ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS collection_type text NOT NULL DEFAULT 'regular'`,
+  `ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS started_by text REFERENCES users(id)`,
+  `ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS submitted_at timestamptz`,
+  `ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS chief_stamped_by text REFERENCES users(id)`,
+  `ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS chief_stamped_at timestamptz`,
+  `ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS incident_log jsonb NOT NULL DEFAULT '[]'`,
+  `CREATE TABLE IF NOT EXISTS report_visited_spots (
+    id text PRIMARY KEY,
+    daily_report_id text NOT NULL REFERENCES daily_reports(id),
+    spot_id text NOT NULL REFERENCES spots(id),
+    source text NOT NULL DEFAULT 'gps',
+    excluded boolean NOT NULL DEFAULT false,
+    visited_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (daily_report_id, spot_id)
+  )`,
+  `ALTER TABLE daily_inspections DROP CONSTRAINT IF EXISTS daily_inspections_user_id_inspection_date_key`,
+  `ALTER TABLE daily_inspections ADD CONSTRAINT daily_inspections_user_date_shift_key UNIQUE (user_id, inspection_date, shift_type)`,
 ]
 
 export async function POST(request: Request) {

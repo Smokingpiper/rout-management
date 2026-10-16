@@ -18,6 +18,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (body.memo !== undefined) patch.memo = body.memo
   if (body.submit) {
     patch.status = 'pending_approval'
+    patch.submittedAt = new Date()
+    // 再提出（差し戻し後）では係長の押印は外れているので、念のため空にしておく
+    patch.chiefStampedBy = null
+    patch.chiefStampedAt = null
     const user = await getCurrentUser()
     if (user) patch.submittedBy = user.id
   }

@@ -1,9 +1,9 @@
 import { db } from '@/db/client'
 import {
   dailyReports, routes, areas, wasteTypePrices, feeRules,
-  monthlySummaries, monthlySummaryItems, paymentAllocations,
+  monthlySummaries, monthlySummaryItems, paymentAllocations, users,
 } from '@/db/schema'
-import { eq, and, inArray, desc, gte, lt, lte, isNull } from 'drizzle-orm'
+import { eq, and, or, inArray, desc, gte, lt, lte, isNull } from 'drizzle-orm'
 
 // 指定日時点で有効な単価（effective_from が対象日以前で最新のもの）
 async function priceAsOf(wasteTypeId: string, asOfDate: string): Promise<number | null> {
@@ -27,19 +27,34 @@ async function feeRuleAsOf(unionId: string, companyId: string, asOfDate: string)
   return generalRules[0] ?? null
 }
 
+// その会社の日報（通常回収＝会社のルートの日報、早朝回収＝会社のドライバーが開始した日報）を指す条件。
+// 早朝回収はルートを持たないため、ルートではなく開始したドライバーの所属会社で判定する
+async function companyReportCondition(companyId: string) {
+  const companyAreas = await db.select().from(areas).where(eq(areas.companyId, companyId))
+  const companyRoutes = companyAreas.length
+    ? await db.select().from(routes).where(inArray(routes.areaId, companyAreas.map(a => a.id)))
+    : []
+  const companyUsers = await db.select({ id: users.id }).from(users).where(eq(users.companyId, companyId))
+
+  const parts = []
+  if (companyRoutes.length) parts.push(inArray(dailyReports.routeId, companyRoutes.map(r => r.id)))
+  if (companyUsers.length) {
+    parts.push(and(eq(dailyReports.collectionType, 'early'), inArray(dailyReports.startedBy, companyUsers.map(u => u.id))))
+  }
+  return parts.length ? or(...parts) : null
+}
+
 // 対象会社・対象年月（YYYY-MM）の承認済み日報を集計し、品目別内訳・月次合計・支払い配分を再計算する
 export async function recalculateMonth(unionId: string, companyId: string, yearMonth: string) {
   const monthStart = `${yearMonth}-01`
   const [y, m] = yearMonth.split('-').map(Number)
   const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
 
-  const companyAreas = await db.select().from(areas).where(eq(areas.companyId, companyId))
-  if (companyAreas.length === 0) return { totalWeightKg: 0, totalAmount: 0, items: [] }
-  const companyRoutes = await db.select().from(routes).where(inArray(routes.areaId, companyAreas.map(a => a.id)))
-  if (companyRoutes.length === 0) return { totalWeightKg: 0, totalAmount: 0, items: [] }
+  const scope = await companyReportCondition(companyId)
+  if (!scope) return { totalWeightKg: 0, totalAmount: 0, items: [] }
 
   const reports = await db.select().from(dailyReports).where(and(
-    inArray(dailyReports.routeId, companyRoutes.map(r => r.id)),
+    scope,
     eq(dailyReports.status, 'approved'),
     gte(dailyReports.reportDate, monthStart),
     lt(dailyReports.reportDate, nextMonth),
@@ -99,13 +114,11 @@ export async function recalculateMonth(unionId: string, companyId: string, yearM
 
 // 承認済み日報が存在する年月をすべて洗い出して再計算する（初回導入時のバックフィル用）
 export async function recalculateAllMonths(unionId: string, companyId: string) {
-  const companyAreas = await db.select().from(areas).where(eq(areas.companyId, companyId))
-  if (companyAreas.length === 0) return []
-  const companyRoutes = await db.select().from(routes).where(inArray(routes.areaId, companyAreas.map(a => a.id)))
-  if (companyRoutes.length === 0) return []
+  const scope = await companyReportCondition(companyId)
+  if (!scope) return []
 
   const reports = await db.select({ reportDate: dailyReports.reportDate }).from(dailyReports).where(and(
-    inArray(dailyReports.routeId, companyRoutes.map(r => r.id)),
+    scope,
     eq(dailyReports.status, 'approved'),
   ))
   const yearMonths = [...new Set(reports.map(r => r.reportDate.slice(0, 7)))].sort()

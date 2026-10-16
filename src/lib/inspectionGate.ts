@@ -5,11 +5,13 @@ import { redirect } from 'next/navigation'
 import { todayStr } from './date'
 import { summarizeInspection } from './inspection'
 
-// 今日の作業前点検が「出発できる状態」か（点検項目がすべて回答済み かつ 始業点呼が入力済み）
-export async function isInspectionReady(userId: string): Promise<boolean> {
+// 今日の作業前点検が「出発できる状態」か（点検項目がすべて回答済み かつ 始業点呼が入力済み）。
+// 通常回収と早朝回収は別々の点検表なので、区分ごとに判定する
+export async function isInspectionReady(userId: string, shiftType: 'normal' | 'early' = 'normal'): Promise<boolean> {
   const [record] = await db.select().from(dailyInspections).where(and(
     eq(dailyInspections.userId, userId),
     eq(dailyInspections.inspectionDate, todayStr()),
+    eq(dailyInspections.shiftType, shiftType),
   ))
   if (!record) return false
   const s = summarizeInspection(record)
