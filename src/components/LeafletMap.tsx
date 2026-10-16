@@ -25,6 +25,9 @@ export default function LeafletMap({
   const mapRef = useRef<any>(null)
   const overlaysRef = useRef<any[]>([])
   const boundsRef = useRef<[number, number][]>([])
+  // ユーザーが地図を操作（ドラッグ・ズーム等）した後は、GPS更新やスポット通過のたびに
+  // 全体表示へ自動で引き戻さない。戻したいときは「現在地」ボタンを使う
+  const userMovedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
 
@@ -42,6 +45,10 @@ export default function LeafletMap({
           attribution: ATTRIBUTION,
           maxZoom: 20,
         }).addTo(mapRef.current)
+
+        const markMoved = () => { userMovedRef.current = true }
+        containerRef.current.addEventListener('pointerdown', markMoved)
+        containerRef.current.addEventListener('wheel', markMoved, { passive: true })
       }
       const map = mapRef.current
 
@@ -95,7 +102,7 @@ export default function LeafletMap({
       }
 
       boundsRef.current = boundsPoints
-      if (boundsPoints.length > 0) {
+      if (boundsPoints.length > 0 && !userMovedRef.current) {
         map.fitBounds(boundsPoints, { padding: [40, 40] })
       }
     }).catch(err => setError(err.message))
@@ -125,7 +132,7 @@ export default function LeafletMap({
     const id = requestAnimationFrame(() => {
       if (!mapRef.current) return
       mapRef.current.invalidateSize()
-      if (boundsRef.current.length > 0) {
+      if (boundsRef.current.length > 0 && !userMovedRef.current) {
         mapRef.current.fitBounds(boundsRef.current, { padding: [40, 40] })
       }
     })
@@ -134,6 +141,13 @@ export default function LeafletMap({
       document.body.style.overflow = ''
     }
   }, [fullscreen])
+
+  function recenter() {
+    const map = mapRef.current
+    if (!map || !currentLocation) return
+    // 手動で拡大していた場合はそのズームを保ち、引いていた場合だけ街区が見える程度まで寄せる
+    map.setView([currentLocation.lat, currentLocation.lng], Math.max(map.getZoom(), 17), { animate: false })
+  }
 
   if (!apiKey) return null
   if (error) return <div style={{ padding: 12, fontSize: 12.5, color: 'var(--danger)' }}>{error}</div>
@@ -163,6 +177,22 @@ export default function LeafletMap({
       >
         {fullscreen ? '✕' : '⛶'}
       </button>
+      {currentLocation && (
+        <button
+          type="button"
+          onClick={recenter}
+          aria-label="現在地に戻る"
+          style={{
+            position: 'absolute', bottom: 24, left: 10, zIndex: 1001,
+            height: 36, padding: '0 12px', borderRadius: 18, border: '1px solid var(--border)',
+            background: 'var(--bg-2)', color: 'var(--accent-2)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 5,
+            boxShadow: '0 1px 4px rgba(0,0,0,.25)',
+          }}
+        >
+          📍 現在地
+        </button>
+      )}
       {focusLatLng && (
         <>
           <div style={{
