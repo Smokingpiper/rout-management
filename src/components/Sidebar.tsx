@@ -8,6 +8,7 @@ const NAV_GROUPS = [
     label: 'ドライバー向け',
     items: [
       { href: '/driver', label: '今日のルート' },
+      { href: '/driver/inspection', label: '作業前点検' },
       { href: '/driver/my-routes', label: '担当ルート一覧' },
       { href: '/driver/reports', label: '日報一覧' },
     ],
@@ -17,6 +18,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/admin', label: 'エリア一覧' },
       { href: '/admin/reports', label: '日報一覧・承認' },
+      { href: '/admin/inspections', label: '点検記録' },
       { href: '/admin/users', label: 'ユーザー管理' },
     ],
   },

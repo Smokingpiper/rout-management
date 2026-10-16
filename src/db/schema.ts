@@ -239,3 +239,21 @@ export const allowedEmails = pgTable('allowed_emails', {
   status:       allowedEmailStatusEnum('status').default('invited').notNull(),
   createdAt:    timestamp('created_at').defaultNow().notNull(),
 })
+
+// ── 作業前点検（日常点検・点呼表）──────────────────────────
+// 紙の「日常点検・点呼表」のデジタル化。ドライバー1人につき1日1件（日付はJST基準）。
+// checks:        { [項目キー]: { result: 'ok' | 'ng', action?: '×の場合の対応' } }（項目定義は src/lib/inspection.ts）
+// startRollCall/endRollCall: 始業・終業点呼（点呼者・対面・検知器・酒気帯び・体調・連絡事項・記録時刻）
+export const dailyInspections = pgTable('daily_inspections', {
+  id:             id(),
+  userId:         text('user_id').notNull().references(() => users.id),
+  inspectionDate: date('inspection_date').notNull(),
+  shiftType:      text('shift_type').notNull().default('normal'),
+  vehicleNumber:  text('vehicle_number'),
+  checks:         jsonb('checks').notNull().default('{}'),
+  startRollCall:  jsonb('start_roll_call'),
+  endRollCall:    jsonb('end_roll_call'),
+  nearMissNote:   text('near_miss_note'),
+  createdAt:      timestamp('created_at').defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at').defaultNow().notNull(),
+})

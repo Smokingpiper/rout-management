@@ -204,6 +204,22 @@ const STATEMENTS = [
   // 既存のrole列から配列へ移行し、role列自体はアプリ側からは参照しなくなる（削除はしない）
   `ALTER TABLE users ADD COLUMN roles jsonb NOT NULL DEFAULT '[]'`,
   `UPDATE users SET roles = jsonb_build_array(role) WHERE roles = '[]'::jsonb`,
+
+  // 作業前点検（日常点検・点呼表）。ドライバー1人につき1日1件
+  `CREATE TABLE daily_inspections (
+    id text PRIMARY KEY,
+    user_id text NOT NULL REFERENCES users(id),
+    inspection_date date NOT NULL,
+    shift_type text NOT NULL DEFAULT 'normal',
+    vehicle_number text,
+    checks jsonb NOT NULL DEFAULT '{}',
+    start_roll_call jsonb,
+    end_roll_call jsonb,
+    near_miss_note text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (user_id, inspection_date)
+  )`,
 ]
 
 export async function POST(request: Request) {
