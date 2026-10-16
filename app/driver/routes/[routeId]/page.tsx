@@ -9,8 +9,14 @@ import RunScreen from './RunScreen'
 
 export const dynamic = 'force-dynamic'
 
-export default async function DriverRoutePage({ params }: { params: Promise<{ routeId: string }> }) {
+export default async function DriverRoutePage({
+  params, searchParams,
+}: {
+  params: Promise<{ routeId: string }>
+  searchParams: Promise<{ start?: string }>
+}) {
   const { routeId } = await params
+  const { start } = await searchParams
   const [route] = await db.select().from(routes).where(eq(routes.id, routeId))
   if (!route) notFound()
   const [area] = await db.select().from(areas).where(eq(areas.id, route.areaId))
@@ -55,6 +61,7 @@ export default async function DriverRoutePage({ params }: { params: Promise<{ ro
       ackedSpotIds={[...ackedSpotIds]}
       trackPointCount={trackPointCount}
       wasteTypeName={wasteType?.name ?? null}
+      autoStartRecording={start === '1'}
     />
   )
 }

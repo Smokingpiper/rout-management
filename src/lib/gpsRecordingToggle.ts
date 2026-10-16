@@ -27,5 +27,11 @@ export function useGpsRecordingToggle(dailyReportId: string) {
     })
   }
 
-  return { on, toggle }
+  // 「収集を開始する」から入ってきたときなど、以前に手動でOFFにしていても確実にONにしたい場合に使う
+  function turnOn() {
+    setOn(true)
+    try { localStorage.setItem(storageKey(dailyReportId), '1') } catch {}
+  }
+
+  return { on, toggle, turnOn }
 }

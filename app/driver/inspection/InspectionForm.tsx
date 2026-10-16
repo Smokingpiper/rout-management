@@ -124,8 +124,8 @@ function RollCallCard({
 }
 
 export default function InspectionForm({
-  today, driverName, initial,
-}: { today: string; driverName: string; initial: Initial }) {
+  today, nextHref, driverName, initial,
+}: { today: string; nextHref: string | null; driverName: string; initial: Initial }) {
   const [shiftType, setShiftType] = useState<ShiftType>(initial.shiftType)
   const [vehicleNumber, setVehicleNumber] = useState(initial.vehicleNumber)
   const [checks, setChecks] = useState<Checks>(initial.checks)
@@ -158,7 +158,7 @@ export default function InspectionForm({
     touch()
   }
 
-  async function save() {
+  async function save(): Promise<boolean> {
     setSaveState('saving')
     try {
       const res = await fetch('/api/driver/inspection', {
@@ -181,9 +181,20 @@ export default function InspectionForm({
       dirty.current = false
       setSavedAt(formatTime(json.updatedAt))
       setSaveState('saved')
+      return true
     } catch {
       setSaveState('error')
+      return false
     }
+  }
+
+  const [going, setGoing] = useState(false)
+  async function saveAndGo() {
+    if (!nextHref) return
+    setGoing(true)
+    const ok = await save()
+    if (ok) window.location.href = nextHref
+    else setGoing(false)
   }
 
   // 入力のたびに少し待ってから自動保存する（途中で画面を閉じても入力が消えないように）
@@ -196,6 +207,10 @@ export default function InspectionForm({
 
   const answered = ALL_CHECK_ITEMS.filter(i => checks[i.key]?.result).length
   const ngCount = ALL_CHECK_ITEMS.filter(i => checks[i.key]?.result === 'ng').length
+  const startReady = answered === ALL_CHECK_ITEMS.length && isRollCallAnswered(startRollCall)
+  const missing: string[] = []
+  if (answered < ALL_CHECK_ITEMS.length) missing.push(`点検項目（あと${ALL_CHECK_ITEMS.length - answered}項目）`)
+  if (!isRollCallAnswered(startRollCall)) missing.push('始業点呼')
 
   return (
     <>
@@ -294,8 +309,21 @@ export default function InspectionForm({
         />
       </div>
 
+      {nextHref && (
+        <div className="card" style={startReady ? { background: "var(--accent-dim)", borderColor: "var(--accent)" } : undefined}>
+          <button className="btn primary" style={{ width: "100%", minHeight: 48, fontSize: 15 }} disabled={!startReady || going} onClick={saveAndGo}>
+            {going ? "保存しています…" : "点検を完了してルートを開始する →"}
+          </button>
+          <p style={{ fontSize: 12, color: startReady ? "var(--accent)" : "var(--text-3)", marginTop: 8 }}>
+            {startReady
+              ? "ルート画面に進み、GPS記録が自動でONになります。"
+              : `未入力: ${missing.join("・")}。入力するとルートを開始できます。`}
+          </p>
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
-        <button className="btn primary" disabled={saveState === 'saving'} onClick={save}>今すぐ保存</button>
+        <button className="btn primary" disabled={saveState === 'saving'} onClick={() => save()}>今すぐ保存</button>
         <span style={{ fontSize: 12.5, color: saveState === 'error' ? 'var(--danger)' : 'var(--text-3)' }}>
           {saveState === 'saving' && '保存しています…'}
           {saveState === 'dirty' && '入力中…（自動で保存されます）'}

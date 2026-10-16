@@ -14,7 +14,7 @@ type Spot = { id: string; orderInRoute: number; address: string | null; isAlertS
 type Report = { id: string; status: string; reportDate: string }
 
 export default function RunScreen({
-  routeId, routeName, report, spots, ackedSpotIds, trackPointCount, wasteTypeName,
+  routeId, routeName, report, spots, ackedSpotIds, trackPointCount, wasteTypeName, autoStartRecording = false,
 }: {
   routeId: string
   routeName: string
@@ -23,9 +23,19 @@ export default function RunScreen({
   ackedSpotIds: string[]
   trackPointCount: number
   wasteTypeName: string | null
+  autoStartRecording?: boolean
 }) {
   const reportOpen = report.status === 'in_progress'
-  const { on: recordingOn, toggle: toggleRecording } = useGpsRecordingToggle(report.id)
+  const { on: recordingOn, toggle: toggleRecording, turnOn: turnOnRecording } = useGpsRecordingToggle(report.id)
+
+  // 今日のルートの「収集を開始する」から来たときは、GPS記録を自動でONにする。
+  // URLの?start=1は一度使ったら消し、リロードのたびに強制ONにならないようにする
+  useEffect(() => {
+    if (!autoStartRecording) return
+    if (reportOpen) turnOnRecording()
+    window.history.replaceState(null, '', window.location.pathname)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const trackingEnabled = reportOpen && recordingOn
   const { gpsActive, gpsError, pointCount, currentLocation, backgrounded } = useGpsTracking(report.id, trackingEnabled, trackPointCount)
   const [acked, setAcked] = useState(new Set(ackedSpotIds))

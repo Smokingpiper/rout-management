@@ -9,7 +9,12 @@ import InspectionForm from './InspectionForm'
 
 export const dynamic = 'force-dynamic'
 
-export default async function InspectionPage() {
+// 点検完了後に進める先。open redirect を避けるため、ドライバーのルート画面のURLだけを許可する
+const SAFE_NEXT = /^\/driver\/routes\/[A-Za-z0-9-]+(\?start=1)?$/
+
+export default async function InspectionPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next } = await searchParams
+  const nextHref = next && SAFE_NEXT.test(next) ? next : null
   const user = await getCurrentUser()
   if (!user) redirect('/login?next=/driver/inspection')
 
@@ -32,6 +37,7 @@ export default async function InspectionPage() {
 
       <InspectionForm
         today={today}
+        nextHref={nextHref}
         driverName={user.name || user.email || ''}
         initial={{
           shiftType: ((record?.shiftType ?? last?.shiftType ?? 'normal') as ShiftType),

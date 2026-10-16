@@ -1,8 +1,9 @@
 import { db } from '@/db/client'
-import { areas, routes, wasteTypes, dailyReports, spots, userRoutes } from '@/db/schema'
+import { areas, routes, wasteTypes, dailyReports, spots, userRoutes, dailyInspections } from '@/db/schema'
 import { eq, sql, and, inArray } from 'drizzle-orm'
 import { todayStr, todayDayOfWeek } from '@/lib/date'
 import { getCurrentUser } from '@/lib/auth'
+import { summarizeInspection } from '@/lib/inspection'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +49,13 @@ export default async function TodayRoutePage() {
     : []
   const spotCountByRoute = new Map(spotCounts.map(r => [r.routeId, r.n]))
 
+  // 作業前点検（点検項目と始業点呼がそろっていれば、そのままルートを開始できる）
+  const [inspection] = user
+    ? await db.select().from(dailyInspections).where(and(eq(dailyInspections.userId, user.id), eq(dailyInspections.inspectionDate, today)))
+    : []
+  const inspectionSummary = inspection ? summarizeInspection(inspection) : null
+  const inspectionReady = !!inspectionSummary && inspectionSummary.checksDone && inspectionSummary.startDone
+
   const sorted = [...routeList].sort((a, b) => {
     const areaA = areaById.get(a.areaId)?.name ?? ''
     const areaB = areaById.get(b.areaId)?.name ?? ''
@@ -60,7 +68,26 @@ export default async function TodayRoutePage() {
       <div className="page-title">今日のルート（{today}・{DAY_LABELS[dow]}曜日）</div>
       <div className="page-desc">本日担当のルートです。ルートを選んで収集を開始してください。</div>
 
+      <div className="card" style={inspectionReady ? undefined : { background: "var(--warn-dim)", borderColor: "var(--warn)" }}>
+        <div className="card-title" style={{ marginBottom: 0 }}>
+          作業前点検
+          {inspectionReady
+            ? <span className="pill ok">入力済み</span>
+            : <span className="pill warn">未完了{inspectionSummary ? `（点検 ${inspectionSummary.answered}/${inspectionSummary.total}・始業点呼${inspectionSummary.startDone ? "済" : "未"}）` : ""}</span>}
+        </div>
+        {!inspectionReady && (
+          <p style={{ fontSize: 12.5, color: "var(--text-2)", margin: "8px 0 10px" }}>
+            ルートの収集を開始する前に、日常点検・始業点呼を入力してください。ルートの「点検して収集を開始する」を押すと点検画面に進み、完了後にルートが始まってGPS記録も自動でONになります。
+          </p>
+        )}
+        <a className={inspectionReady ? "btn sm" : "btn sm primary"} style={{ marginTop: inspectionReady ? 8 : 0 }} href="/driver/inspection">
+          {inspectionReady ? "点検内容を確認・修正する" : "作業前点検を入力する →"}
+        </a>
+      </div>
+
       {sorted.map(route => {
+        const startHref = `/driver/routes/${route.id}?start=1`
+        const needsInspection = !inspectionReady
         const report = reportByRoute.get(route.id)
         const wt = route.defaultWasteTypeId ? wasteTypeById.get(route.defaultWasteTypeId) : null
         return (
@@ -75,7 +102,12 @@ export default async function TodayRoutePage() {
               )}
             </div>
             <div className="grid-cards" style={{ gridTemplateColumns: report?.status === 'in_progress' || !report ? '1fr 1fr 1fr' : '1fr 1fr' }}>
-              <a className="btn primary" href={`/driver/routes/${route.id}`}>{report ? '続ける →' : '収集を開始する →'}</a>
+              <a
+                className="btn primary"
+                href={report ? `/driver/routes/${route.id}` : needsInspection ? `/driver/inspection?next=${encodeURIComponent(startHref)}` : startHref}
+              >
+                {report ? '続ける →' : needsInspection ? '点検して収集を開始する →' : '収集を開始する →'}
+              </a>
               <a className="btn" href={`/driver/routes/${route.id}/track`}>🛰 軌跡マップ</a>
               {(report?.status === 'in_progress' || !report) && (
                 <a className="btn" href={`/driver/routes/${route.id}/submit`}>📝 日報提出</a>
