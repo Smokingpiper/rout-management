@@ -104,9 +104,13 @@ export default async function TodayRoutePage({ searchParams }: { searchParams: P
         </div>
       </div>
 
+      {/* 担当ルートの一覧は、［通常回収］を選んで点検を済ませたあと（担当ルートが複数ある日）にだけ表示する。
+          トップは［通常回収］［早朝回収］の2択に絞る */}
+      {type === 'normal' && (
+      <>
       <div style={{ fontWeight: 700, fontSize: 14, margin: '4px 0 8px' }}>
         本日の担当ルート（通常回収）
-        {type === 'normal' && <span className="pill info" style={{ marginLeft: 8 }}>回収するルートを選んでください</span>}
+        {sorted.length > 0 && <span className="pill info" style={{ marginLeft: 8 }}>回収するルートを選んでください</span>}
       </div>
 
       {sorted.map(route => {
@@ -145,6 +149,8 @@ export default async function TodayRoutePage({ searchParams }: { searchParams: P
         <div className="card">
           <p style={{ fontSize: 13, color: 'var(--text-3)' }}>本日（{DAY_LABELS[dow]}曜日）に担当のルートはありません。</p>
         </div>
+      )}
+      </>
       )}
 
       <a className="btn" href="/driver/my-routes">📋 担当ルート一覧を見る</a>
