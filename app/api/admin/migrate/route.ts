@@ -243,6 +243,9 @@ const STATEMENTS = [
   )`,
   `ALTER TABLE daily_inspections DROP CONSTRAINT IF EXISTS daily_inspections_user_id_inspection_date_key`,
   `ALTER TABLE daily_inspections ADD CONSTRAINT daily_inspections_user_date_shift_key UNIQUE (user_id, inspection_date, shift_type)`,
+
+  // 複数ロール化(roles)以降、アプリは旧role列に書かないので、NOT NULLのままだとユーザー追加が失敗する
+  `ALTER TABLE users ALTER COLUMN role DROP NOT NULL`,
 ]
 
 export async function POST(request: Request) {
