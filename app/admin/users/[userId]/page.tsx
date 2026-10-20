@@ -3,7 +3,9 @@ import { users, userRoutes, routes, areas } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { formatRoles } from '@/lib/roleLabel'
+import { getLoginStatuses, LOGIN_STATE_LABEL, LOGIN_STATE_HINT, LOGIN_STATE_PILL } from '@/lib/loginStatus'
 import UserRolesForm from './UserRolesForm'
+import ResetPasswordCard from './ResetPasswordCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +15,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const { userId } = await params
   const [user] = await db.select().from(users).where(eq(users.id, userId))
   if (!user) notFound()
+
+  const loginStatus = (await getLoginStatuses([user])).get(user.id)!
 
   const assignments = await db.select().from(userRoutes).where(eq(userRoutes.userId, userId))
   const routeIds = assignments.map(a => a.routeId)
@@ -40,6 +44,19 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       <div className="card" style={{ display: 'flex', gap: 10 }}>
         <a className="btn primary" href={`/admin/users/${userId}/schedule`}>スケジュール設定</a>
       </div>
+
+      <div className="card">
+        <div className="card-title">ログイン状況</div>
+        <span className={`pill ${LOGIN_STATE_PILL[loginStatus.state]}`}>{LOGIN_STATE_LABEL[loginStatus.state]}</span>
+        <p style={{ fontSize: 12.5, color: 'var(--text-2)', marginTop: 8 }}>{LOGIN_STATE_HINT[loginStatus.state]}</p>
+        {loginStatus.lastLoginAt && (
+          <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
+            直近のログイン: {loginStatus.lastLoginAt.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+          </p>
+        )}
+      </div>
+
+      <ResetPasswordCard userId={userId} userLabel={user.name || user.email || 'このユーザー'} />
 
       <UserRolesForm
         userId={userId}

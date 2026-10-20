@@ -16,6 +16,14 @@ export const KIND_LABEL: Record<ChangeKind, string> = { new: '新機能', improv
 
 export const CHANGELOG: ChangeEntry[] = [
   {
+    date: '2026-10-20',
+    title: 'ユーザー招待をスムーズに（初期パスワードの再発行・初期ログインの確認）',
+    items: [
+      { audience: 'admin', kind: 'new', text: 'ユーザー詳細ページから「初期パスワードを再発行」できるように。パスワードを忘れた・招待メッセージを紛失した場合に、新しい一時パスワードを発行してコピーできます（今までのパスワードとログイン中の端末は無効になります）。' },
+      { audience: 'admin', kind: 'new', text: 'ユーザー一覧に、初期ログインの状況（初期ログイン完了／PW未変更／未ログイン）を表示。完了していないユーザーの人数も一覧の上に出ます。ユーザー詳細には直近のログイン日時も表示されます。' },
+    ],
+  },
+  {
     date: '2026-10-16',
     title: '作業前点検・早朝回収・日報の印刷と電子印鑑',
     items: [
