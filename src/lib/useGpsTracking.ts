@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-const MIN_INTERVAL_MS = 15000 // GPS点をサーバーに送る最短間隔
+// GPS点をサーバーに送る最短間隔。収集車は時速30kmで秒速約8mなので、15秒だと点の間隔が約125mも空き、
+// 40m以内を通ったのに記録上は近づいていない（周り損ない扱い）になりやすい。5秒なら約40m間隔に収まる
+const MIN_INTERVAL_MS = 5000
 
 export function useGpsTracking(dailyReportId: string, enabled: boolean, initialCount: number) {
   const [gpsActive, setGpsActive] = useState(false)
@@ -49,7 +51,8 @@ export function useGpsTracking(dailyReportId: string, enabled: boolean, initialC
         sendPoint(pos.coords.latitude, pos.coords.longitude, false)
       },
       (err) => setGpsError(err.message || '位置情報を取得できませんでした'),
-      { enableHighAccuracy: true, maximumAge: 10000 },
+      // maximumAge:0 = 端末が保持している少し前の位置ではなく、常に新しく測った位置を使う
+      { enableHighAccuracy: true, maximumAge: 0 },
     )
 
     // ナビアプリ（Google/Apple Maps）を開くとブラウザがバックグラウンドになり、
