@@ -1,6 +1,7 @@
 const EARTH_RADIUS_M = 6371000
-// GPSの実務上の誤差・記録間隔（5秒毎）を踏まえた「通過とみなす」距離。狭すぎると住宅密集地で誤検知が増える。
-export const MISSED_SPOT_THRESHOLD_M = 40
+// GPSの実務上の誤差（スマホで通常5〜10m、ビルの間では20m超）・記録間隔（2秒毎）を踏まえた「通過とみなす」距離。
+// これより狭くすると、実際は通っていても⚠️になるスポットが急増する。広いと隣の通りのスポットまで緑になる
+export const MISSED_SPOT_THRESHOLD_M = 20
 
 function toRad(deg: number) {
   return (deg * Math.PI) / 180

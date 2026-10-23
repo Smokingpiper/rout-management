@@ -60,7 +60,7 @@ export default function RunScreen({
   const remainingAlerts = alertSpots.filter(s => !acked.has(s.id)).length
   const isApple = useIsApplePlatform()
 
-  // 通過済みのスポット。スポットごとに「40m以内に近づいたか」で判定する。
+  // 通過済みのスポット。スポットごとに「20m以内に近づいたか」で判定する。
   // 回る順番が設定した順番と違っていても、実際に近づいたスポットだけが緑になる。
   // 初期値は記録済みのGPS軌跡から求めたもの（再読み込みしても緑が戻らない）
   const [visited, setVisited] = useState(() => new Set(initialVisitedSpotIds))
@@ -148,7 +148,7 @@ export default function RunScreen({
               ? '📡 現在地を取得しています…（数秒〜数十秒かかることがあります）'
               : !routeLine
                 ? (routeError ? '⚠️ 参考ルートを取得できませんでした。自動で再試行しています…' : '📡 次のスポットまでの参考ルートを取得しています…')
-                : '🔴 未通過 → 🟢 通過済み（40m以内に近づくと自動で切り替わり、通知音が鳴ります）・🔵 次のスポット。青い線は現在地から次のスポットまでの参考ルートです。'}
+                : '🔴 未通過 → 🟢 通過済み（20m以内に近づくと自動で切り替わり、通知音が鳴ります）・🔵 次のスポット。青い線は現在地から次のスポットまでの参考ルートです。'}
             {' '}この画面を開いたままにしておけば、スポットごとに画面を移動しなくてもGPS記録が続きます。
           </div>
         )}

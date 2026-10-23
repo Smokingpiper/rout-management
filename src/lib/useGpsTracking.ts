@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-// GPS点をサーバーに送る最短間隔。収集車は時速30kmで秒速約8mなので、15秒だと点の間隔が約125mも空き、
-// 40m以内を通ったのに記録上は近づいていない（周り損ない扱い）になりやすい。5秒なら約40m間隔に収まる
-const MIN_INTERVAL_MS = 5000
+// GPS点をサーバーに送る最短間隔。ごみ収集は徒歩に近い速さ（秒速1〜2m）で進むため、2秒なら点の間隔は数mに収まり、
+// 狭い判定距離でも通過を取りこぼしにくい（速く走る場合は間隔が空くので、通過判定は点どうしをつなぐ線分で補う余地がある）
+const MIN_INTERVAL_MS = 2000
 
 export function useGpsTracking(dailyReportId: string, enabled: boolean, initialCount: number) {
   const [gpsActive, setGpsActive] = useState(false)

@@ -97,7 +97,7 @@ export default function EarlyScreen({
     }
   }
 
-  // GPSで40m以内に近づいたスポットを自動で「回った」に追加する（外したスポットは再追加しない）
+  // GPSで20m以内に近づいたスポットを自動で「回った」に追加する（外したスポットは再追加しない）
   useEffect(() => {
     if (!currentLocation || !reportOpen || !recordingOn) return
     const visitedIds = new Set(visited.map(v => v.id))
@@ -207,7 +207,7 @@ export default function EarlyScreen({
           onMarkerClick={reportOpen ? setSelectedId : undefined}
         />
         <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 6 }}>
-          🔴 近くのスポット（未記録）・🟢 回った・🔵 選択中。{currentLocation ? 'スポットの40m以内に近づくと自動で「回った」に記録されます。地図のスポットをタップして手動で追加・取り消しもできます。' : '📡 現在地を取得しています…（取得できると周辺のスポットが表示されます）'}
+          🔴 近くのスポット（未記録）・🟢 回った・🔵 選択中。{currentLocation ? 'スポットの20m以内に近づくと自動で「回った」に記録されます。地図のスポットをタップして手動で追加・取り消しもできます。' : '📡 現在地を取得しています…（取得できると周辺のスポットが表示されます）'}
         </div>
 
         {selected && reportOpen && (
