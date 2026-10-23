@@ -16,6 +16,13 @@ export const KIND_LABEL: Record<ChangeKind, string> = { new: '新機能', improv
 
 export const CHANGELOG: ChangeEntry[] = [
   {
+    date: '2026-10-23',
+    title: '地図を進行方向が上になるように回転',
+    items: [
+      { audience: 'driver', kind: 'new', text: '地図右上の「🧭 北固定」ボタンで、走っている向きが画面の上になる「進行方向」モードに切り替えられるように。現在地は矢印で表示され、常に中央に追従します（拡大・縮小は左上の［＋］［−］）。もう一度押すと北が上の地図に戻ります。' },
+    ],
+  },
+  {
     date: '2026-10-20',
     title: 'ユーザー招待をスムーズに（初期パスワードの再発行・初期ログインの確認）',
     items: [
