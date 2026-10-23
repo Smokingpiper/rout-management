@@ -10,8 +10,11 @@ type Point = { lat: number; lng: number; t?: number }
 type SpotPoint = { id: string; lat: number; lng: number; isAlertSpot: boolean; orderInRoute: number }
 
 export default function TrackMap({
-  points, spots, missedIds: missedIdsProp, focusLatLng, analysis: analysisProp,
+  points, spots, missedIds: missedIdsProp, focusLatLng, analysis: analysisProp, onSpotClick, activeId, overlay,
 }: {
+  onSpotClick?: (id: string) => void
+  activeId?: string | null
+  overlay?: React.ReactNode
   points: Point[]
   analysis?: TrackAnalysis
   spots: SpotPoint[]
@@ -40,7 +43,9 @@ export default function TrackMap({
   if (hasKey) {
     return (
       <LeafletMap
-        markers={spots.map(s => ({ lat: s.lat, lng: s.lng, alert: s.isAlertSpot, missed: missedIds.has(s.id) }))}
+        markers={spots.map(s => ({ id: s.id, lat: s.lat, lng: s.lng, alert: s.isAlertSpot, missed: missedIds.has(s.id), target: s.id === activeId && !missedIds.has(s.id) }))}
+        onMarkerClick={onSpotClick}
+        overlay={overlay}
         track={track}
         height={320}
         focusLatLng={focusLatLng}

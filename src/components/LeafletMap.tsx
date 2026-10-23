@@ -32,8 +32,9 @@ function bearingDeg(a: LatLng, b: LatLng) {
 }
 
 export default function LeafletMap({
-  markers, path, track, height = 300, currentLocation, focusLatLng, onMarkerClick,
+  markers, path, track, height = 300, currentLocation, focusLatLng, onMarkerClick, overlay,
 }: {
+  overlay?: React.ReactNode // 地図の下端に重ねて表示するもの（全画面表示中でも見える）
   markers: MapMarker[]
   path?: LatLng[]
   track?: TrackLayer
@@ -171,8 +172,8 @@ export default function LeafletMap({
                 // 地図を回しているときも絵文字は正立させる（--counter は地図の回転を打ち消す角度）
                 html: '<span style="display:inline-block;transform:rotate(var(--counter,0deg))">⚠️</span>',
                 className: 'missed-spot-icon',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10],
+                iconSize: [34, 34], // 指でタップしやすい大きさ
+                iconAnchor: [17, 17],
               }),
             })
           : L.circleMarker([m.lat, m.lng], {
@@ -393,6 +394,9 @@ export default function LeafletMap({
         >
           📍 現在地
         </button>
+      )}
+      {overlay && (
+        <div style={{ position: 'absolute', left: 8, right: 8, bottom: 28, zIndex: 1002 }}>{overlay}</div>
       )}
       {focusLatLng && (
         <>

@@ -18,6 +18,8 @@ export default function ReportTrackPanel({
   initialOverriddenSpotIds?: string[]
 }) {
   const [selected, setSelected] = useState<{ id: string; lat: number; lng: number } | null>(null)
+  // 地図のマークをタップして選んだスポット（一覧のタップと違い、地図はズームさせない）
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [overriddenIds, setOverriddenIds] = useState(new Set(initialOverriddenSpotIds))
   const [pendingIds, setPendingIds] = useState(new Set<string>())
   // 一覧の開閉初期状態は最初の判定時点のみで決め、後からクリア操作で
@@ -40,6 +42,10 @@ export default function ReportTrackPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysis, spots, points])
   const sortedSpots = [...spots].sort((a, b) => a.orderInRoute - b.orderInRoute)
+
+  const activeSpot = activeId ? spots.find(s => s.id === activeId) ?? null : null
+  const activeOverridden = !!activeSpot && overriddenIds.has(activeSpot.id) && rawMissedIds.has(activeSpot.id)
+  const activeMissed = !!activeSpot && missedIds.has(activeSpot.id)
 
   async function setPending(spotId: string, on: boolean) {
     setPendingIds(prev => {
@@ -99,6 +105,28 @@ export default function ReportTrackPanel({
         missedIds={missedIds}
         focusLatLng={selected}
         analysis={analysis}
+        activeId={activeId}
+        onSpotClick={id => setActiveId(prev => (prev === id ? null : id))}
+        overlay={activeSpot && (
+          <div className="card" style={{ marginBottom: 0, padding: 10, boxShadow: '0 2px 10px rgba(0,0,0,.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>{activeOverridden ? '☑️' : activeMissed ? '⚠️' : '✅'}</span>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 12.5 }}>
+                <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>#{activeSpot.orderInRoute} {activeSpot.address}</div>
+                <div style={{ color: 'var(--text-3)', fontSize: 11.5 }}>
+                  {activeOverridden ? '手動で通過確認済みです' : activeMissed ? (hints.get(activeSpot.id)?.text ?? '通過が確認できていません') : 'GPSの記録で通過を確認できています'}
+                </div>
+              </div>
+              {activeMissed && (
+                <button className="btn sm primary" disabled={pendingIds.has(activeSpot.id)} onClick={() => clearMissed(activeSpot.id)}>通過済みにする</button>
+              )}
+              {activeOverridden && (
+                <button className="btn sm" disabled={pendingIds.has(activeSpot.id)} onClick={() => restoreMissed(activeSpot.id)}>元に戻す</button>
+              )}
+              <button className="btn sm" aria-label="閉じる" onClick={() => setActiveId(null)}>✕</button>
+            </div>
+          </div>
+        )}
       />
 
       {!unknown && (
