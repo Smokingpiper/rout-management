@@ -5,6 +5,8 @@ import 'leaflet/dist/leaflet.css'
 
 export type MapMarker = { id?: string; lat: number; lng: number; alert?: boolean; missed?: boolean; target?: boolean; unvisited?: boolean }
 export type LatLng = { lat: number; lng: number }
+// 走行経路。segments=途切れずにつながった経路（実線）、gaps=GPSが途切れた区間（破線）、dots=記録された各点
+export type TrackLayer = { segments: LatLng[][]; gaps: [LatLng, LatLng][]; dots: LatLng[] }
 
 // MapTilerの256pxラスタタイル。512px版(streets-v4/{z}/{x}/{y}.png)を使う場合は
 // tileSize:512, zoomOffset:-1 が必要になるため、Leafletの既定に合わせて256px版を使う。
@@ -30,10 +32,11 @@ function bearingDeg(a: LatLng, b: LatLng) {
 }
 
 export default function LeafletMap({
-  markers, path, height = 300, currentLocation, focusLatLng, onMarkerClick,
+  markers, path, track, height = 300, currentLocation, focusLatLng, onMarkerClick,
 }: {
   markers: MapMarker[]
   path?: LatLng[]
+  track?: TrackLayer
   height?: number
   currentLocation?: LatLng | null
   focusLatLng?: LatLng | null
@@ -134,6 +137,33 @@ export default function LeafletMap({
 
       const boundsPoints: [number, number][] = []
 
+      // 走行経路はスポットのマーカーより下に描く
+      if (track) {
+        for (const g of track.gaps) {
+          const gap = L.polyline([[g[0].lat, g[0].lng], [g[1].lat, g[1].lng]], {
+            color: '#F59E0B', weight: 4, opacity: 0.95, dashArray: '2 9', lineCap: 'round',
+          }).addTo(map)
+          overlaysRef.current.push(gap)
+        }
+        for (const seg of track.segments) {
+          if (seg.length < 2) continue
+          const line = L.polyline(seg.map(p => [p.lat, p.lng] as [number, number]), {
+            color: '#4A7CF6', weight: 5, opacity: 0.8, lineJoin: 'round', lineCap: 'round',
+          }).addTo(map)
+          overlaysRef.current.push(line)
+        }
+        // 記録された各点。GPSがまばらだった場所が分かるよう、点も小さく描く
+        const step = Math.max(1, Math.ceil(track.dots.length / 1500))
+        track.dots.forEach((p, i) => {
+          if (i % step !== 0) return
+          const dot = L.circleMarker([p.lat, p.lng], {
+            radius: 2.5, color: '#fff', weight: 1, fillColor: '#1E40AF', fillOpacity: 1, interactive: false,
+          }).addTo(map)
+          overlaysRef.current.push(dot)
+        })
+        track.dots.forEach(p => boundsPoints.push([p.lat, p.lng]))
+      }
+
       for (const m of markers) {
         const marker = m.missed
           ? L.marker([m.lat, m.lng], {
@@ -206,7 +236,7 @@ export default function LeafletMap({
     }).catch(err => setError(err.message))
 
     return () => { cancelled = true }
-  }, [apiKey, rotating, JSON.stringify(markers), JSON.stringify(path), JSON.stringify(currentLocation)])
+  }, [apiKey, rotating, track, JSON.stringify(markers), JSON.stringify(path), JSON.stringify(currentLocation)])
 
   // 回転中はドラッグ移動を止め、ピンチは中心基準にする（回した地図ではドラッグの向きがずれるため）。
   // 地図要素の大きさが変わったらタイルの描画範囲を引き直す

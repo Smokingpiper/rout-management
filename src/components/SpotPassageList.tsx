@@ -3,8 +3,9 @@
 type SpotRow = { id: string; orderInRoute: number; address: string | null; lat: number; lng: number }
 
 export default function SpotPassageList({
-  spots, missedIds, overriddenIds, pendingIds, selectedId, onSelect, onClear, onRestore,
+  spots, missedIds, overriddenIds, pendingIds, selectedId, onSelect, onClear, onRestore, hints,
 }: {
+  hints?: Map<string, { text: string; gpsTrouble: boolean }>
   spots: SpotRow[]
   missedIds: Set<string>
   overriddenIds: Set<string>
@@ -36,6 +37,11 @@ export default function SpotPassageList({
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {s.address}
               {overridden && <span style={{ color: 'var(--text-3)', marginLeft: 6 }}>（手動確認）</span>}
+              {missed && hints?.get(s.id) && (
+                <div style={{ fontSize: 11, whiteSpace: 'normal', color: hints.get(s.id)!.gpsTrouble ? 'var(--warn)' : 'var(--text-3)' }}>
+                  {hints.get(s.id)!.text}
+                </div>
+              )}
             </span>
             {missed && (
               <button

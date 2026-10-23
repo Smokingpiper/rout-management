@@ -38,7 +38,7 @@ export default async function TrackPage({
     <>
       <div className="breadcrumb">ドライバー向け</div>
       <div className="page-title">{area?.name} — {route.name} の軌跡</div>
-      <div className="page-desc">実際に記録されたGPS位置情報です（Google Maps未設定のため簡易表示）。</div>
+      <div className="page-desc">実際に記録されたGPSの走行経路です。通ったはずのスポットが⚠️になっている場合、経路の途切れ（GPSが取れていない区間）が原因かどうかを確認できます。</div>
 
       <div className="card">
         <div className="card-title">日別リスト</div>
@@ -61,7 +61,7 @@ export default async function TrackPage({
 
       {selected && (
         <ReportTrackPanel
-          points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
+          points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude, t: p.recordedAt.getTime() }))}
           spots={spotList}
           dailyReportId={selected.id}
           initialOverriddenSpotIds={overrides.map(o => o.spotId)}

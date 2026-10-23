@@ -1,16 +1,19 @@
 'use client'
 
-import LeafletMap, { type LatLng } from './LeafletMap'
+import { useMemo } from 'react'
+import LeafletMap, { type LatLng, type TrackLayer } from './LeafletMap'
 import TrackPlot from './TrackPlot'
 import { distanceMeters, MISSED_SPOT_THRESHOLD_M } from '@/lib/missedSpots'
+import { analyzeTrack, type TrackAnalysis } from '@/lib/trackAnalysis'
 
-type Point = { lat: number; lng: number }
+type Point = { lat: number; lng: number; t?: number }
 type SpotPoint = { id: string; lat: number; lng: number; isAlertSpot: boolean; orderInRoute: number }
 
 export default function TrackMap({
-  points, spots, missedIds: missedIdsProp, focusLatLng,
+  points, spots, missedIds: missedIdsProp, focusLatLng, analysis: analysisProp,
 }: {
   points: Point[]
+  analysis?: TrackAnalysis
   spots: SpotPoint[]
   missedIds?: Set<string>
   focusLatLng?: LatLng | null
@@ -26,17 +29,19 @@ export default function TrackMap({
       : [],
   )
 
-  // 実際に通過したスポットだけを、元の訪問順（orderInRoute）でつないだ線を描く
-  const passedPath = spots
-    .filter(s => !missedIds.has(s.id))
-    .sort((a, b) => a.orderInRoute - b.orderInRoute)
-    .map(s => ({ lat: s.lat, lng: s.lng }))
+  // 実際に走った経路（GPS記録）を線で描く。途切れた区間は破線にする
+  const analysis = useMemo(() => analysisProp ?? analyzeTrack(points), [analysisProp, points])
+  const track = useMemo<TrackLayer | undefined>(() => points.length === 0 ? undefined : ({
+    segments: analysis.segments,
+    gaps: analysis.gaps.map(g => [g.from, g.to] as [LatLng, LatLng]),
+    dots: points,
+  }), [analysis, points])
 
   if (hasKey) {
     return (
       <LeafletMap
         markers={spots.map(s => ({ lat: s.lat, lng: s.lng, alert: s.isAlertSpot, missed: missedIds.has(s.id) }))}
-        path={passedPath}
+        track={track}
         height={320}
         focusLatLng={focusLatLng}
       />

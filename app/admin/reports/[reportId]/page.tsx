@@ -107,7 +107,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
         />
       ) : (
         <ReportTrackPanel
-          points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude }))}
+          points={trackPoints.map(p => ({ lat: p.latitude, lng: p.longitude, t: p.recordedAt.getTime() }))}
           spots={spotList}
           dailyReportId={report.id}
           initialOverriddenSpotIds={overrides.map(o => o.spotId)}

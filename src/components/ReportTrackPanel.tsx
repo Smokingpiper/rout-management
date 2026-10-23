@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import TrackMap from './TrackMap'
 import SpotPassageList from './SpotPassageList'
 import { findMissedSpots, MISSED_SPOT_THRESHOLD_M } from '@/lib/missedSpots'
+import { analyzeTrack, hintForMissedSpot } from '@/lib/trackAnalysis'
 
-type Point = { lat: number; lng: number }
+type Point = { lat: number; lng: number; t?: number }
 type Spot = { id: string; address: string | null; latitude: number; longitude: number; isAlertSpot: boolean; orderInRoute: number }
 
 export default function ReportTrackPanel({
@@ -27,6 +28,17 @@ export default function ReportTrackPanel({
   const rawMissedIds = new Set(rawMissed.map(m => m.id))
   const missedIds = new Set([...rawMissedIds].filter(id => !overriddenIds.has(id)))
   const unknown = points.length === 0
+  // 走行経路の解析（途切れ区間・走行距離）と、通過できていないスポットごとの原因のヒント
+  const analysis = useMemo(() => analyzeTrack(points), [points])
+  const hints = useMemo(() => {
+    const m = new Map<string, { text: string; gpsTrouble: boolean }>()
+    for (const s of rawMissed) {
+      const h = hintForMissedSpot({ lat: s.latitude, lng: s.longitude }, analysis)
+      if (h) m.set(s.id, h)
+    }
+    return m
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis, spots, points])
   const sortedSpots = [...spots].sort((a, b) => a.orderInRoute - b.orderInRoute)
 
   async function setPending(spotId: string, on: boolean) {
@@ -86,7 +98,22 @@ export default function ReportTrackPanel({
         spots={spots.map(s => ({ id: s.id, lat: s.latitude, lng: s.longitude, isAlertSpot: s.isAlertSpot, orderInRoute: s.orderInRoute }))}
         missedIds={missedIds}
         focusLatLng={selected}
+        analysis={analysis}
       />
+
+      {!unknown && (
+        <div style={{ fontSize: 11.5, color: 'var(--text-2)', marginTop: 8, lineHeight: 1.7 }}>
+          <span style={{ color: '#4A7CF6', fontWeight: 700 }}>━</span> 走行経路（GPSで記録された道）　
+          <span style={{ color: '#1E40AF' }}>●</span> 記録された点　
+          <span style={{ color: '#F59E0B', fontWeight: 700 }}>┅</span> 記録が途切れた区間（GPSが取れていない）
+          <div style={{ color: 'var(--text-3)' }}>
+            記録点 {points.length.toLocaleString()}点 ・ 走行距離 約{(analysis.distanceM / 1000).toFixed(1)}km ・
+            {analysis.gaps.length > 0
+              ? ` 記録の途切れ ${analysis.gaps.length}箇所${analysis.maxGapSeconds != null ? `（最長 約${Math.round(analysis.maxGapSeconds)}秒）` : ''}`
+              : ' 記録の途切れはありません'}
+          </div>
+        </div>
+      )}
 
       <details style={{ marginTop: 12 }} open={detailsOpenInitially}>
         <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
@@ -97,6 +124,7 @@ export default function ReportTrackPanel({
           <SpotPassageList
             spots={sortedSpots.map(s => ({ id: s.id, orderInRoute: s.orderInRoute, address: s.address, lat: s.latitude, lng: s.longitude }))}
             missedIds={rawMissedIds}
+            hints={hints}
             overriddenIds={overriddenIds}
             pendingIds={pendingIds}
             selectedId={selected?.id ?? null}
