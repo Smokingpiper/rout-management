@@ -6,6 +6,7 @@ import { getOrCreateTodaysReport } from '@/lib/daily-report'
 import { getCurrentUser } from '@/lib/auth'
 import { filterSpotsForDriver } from '@/lib/driverSpots'
 import { requireInspectionForPatrol } from '@/lib/inspectionGate'
+import { findMissedSpots } from '@/lib/missedSpots'
 import RunScreen from './RunScreen'
 
 export const dynamic = 'force-dynamic'
@@ -50,6 +51,15 @@ export default async function DriverRoutePage({
     .from(routeTrackPoints)
     .where(eq(routeTrackPoints.dailyReportId, report.id))
 
+  // これまでに記録されたGPS軌跡から「通過済み」のスポットを求める。
+  // 画面を開き直した・再読み込みしたときも、緑（通過済み）の状態を引き継ぐため
+  const trackPoints = await db
+    .select({ lat: routeTrackPoints.latitude, lng: routeTrackPoints.longitude })
+    .from(routeTrackPoints)
+    .where(eq(routeTrackPoints.dailyReportId, report.id))
+  const missedIds = new Set(findMissedSpots(spotList, trackPoints).map(s => s.id))
+  const visitedSpotIds = spotList.filter(s => !missedIds.has(s.id)).map(s => s.id)
+
   const wasteType = report.wasteTypeId
     ? (await db.select().from(wasteTypes).where(eq(wasteTypes.id, report.wasteTypeId)))[0]
     : null
@@ -61,6 +71,7 @@ export default async function DriverRoutePage({
       report={report}
       spots={spotListWithNotes}
       ackedSpotIds={[...ackedSpotIds]}
+      initialVisitedSpotIds={visitedSpotIds}
       trackPointCount={trackPointCount}
       wasteTypeName={wasteType?.name ?? null}
       autoStartRecording={start === '1'}

@@ -14,13 +14,14 @@ type Spot = { id: string; orderInRoute: number; address: string | null; isAlertS
 type Report = { id: string; status: string; reportDate: string }
 
 export default function RunScreen({
-  routeId, routeName, report, spots, ackedSpotIds, trackPointCount, wasteTypeName, autoStartRecording = false,
+  routeId, routeName, report, spots, ackedSpotIds, initialVisitedSpotIds, trackPointCount, wasteTypeName, autoStartRecording = false,
 }: {
   routeId: string
   routeName: string
   report: Report
   spots: Spot[]
   ackedSpotIds: string[]
+  initialVisitedSpotIds: string[]
   trackPointCount: number
   wasteTypeName: string | null
   autoStartRecording?: boolean
@@ -59,31 +60,29 @@ export default function RunScreen({
   const remainingAlerts = alertSpots.filter(s => !acked.has(s.id)).length
   const isApple = useIsApplePlatform()
 
-  // 到達済み（閾値内に近づいた）とみなせた最大の順番。単純な最近傍判定だと、GPSが
-  // ルートから離れた場所（テスト中など）にあるだけで「次のスポット」が無くなってしまうため、
-  // 一度でも近づいたスポットの順番だけを単調に進める方式にしている
-  const [reachedOrder, setReachedOrder] = useState(0)
+  // 通過済みのスポット。スポットごとに「40m以内に近づいたか」で判定する。
+  // 回る順番が設定した順番と違っていても、実際に近づいたスポットだけが緑になる。
+  // 初期値は記録済みのGPS軌跡から求めたもの（再読み込みしても緑が戻らない）
+  const [visited, setVisited] = useState(() => new Set(initialVisitedSpotIds))
   useEffect(() => {
     if (!currentLocation) return
-    let maxReached = reachedOrder
+    const added: string[] = []
     for (const s of spots) {
-      if (s.orderInRoute <= maxReached) continue
-      if (distanceMeters({ lat: s.latitude, lng: s.longitude }, currentLocation) <= MISSED_SPOT_THRESHOLD_M) {
-        maxReached = Math.max(maxReached, s.orderInRoute)
-      }
+      if (visited.has(s.id)) continue
+      if (distanceMeters({ lat: s.latitude, lng: s.longitude }, currentLocation) <= MISSED_SPOT_THRESHOLD_M) added.push(s.id)
     }
-    if (maxReached !== reachedOrder) {
-      setReachedOrder(maxReached)
+    if (added.length > 0) {
+      setVisited(prev => new Set([...prev, ...added]))
       playSpotSound()
     }
-  }, [currentLocation, spots, reachedOrder])
+  }, [currentLocation, spots, visited])
 
   // 現在地の次に回るべきスポット。この画面だけで運転中も現在地→次のスポットの
   // 経路が見えるようにし、スポットごとの画面遷移やナビアプリへの切り替えを避けられるようにする
   const nextTargetSpot = useMemo(() => {
     const sorted = [...spots].sort((a, b) => a.orderInRoute - b.orderInRoute)
-    return sorted.find(s => s.orderInRoute > reachedOrder) ?? null
-  }, [reachedOrder, spots])
+    return sorted.find(s => !visited.has(s.id)) ?? null
+  }, [visited, spots])
 
   const { routeLine, routeError } = useRouteLine(currentLocation, nextTargetSpot ? { lat: nextTargetSpot.latitude, lng: nextTargetSpot.longitude } : null)
 
@@ -137,7 +136,7 @@ export default function RunScreen({
           markers={spots.map(s => ({
             lat: s.latitude, lng: s.longitude, alert: s.isAlertSpot,
             target: s.id === nextTargetSpot?.id,
-            unvisited: s.orderInRoute > reachedOrder,
+            unvisited: !visited.has(s.id),
           }))}
           currentLocation={currentLocation}
           path={routeLine ?? undefined}
