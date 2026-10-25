@@ -16,12 +16,16 @@ function hhmm(iso: string | null) {
 //  ・小さな点＝スポット（緑=通過済み、灰=まだ、赤=周回漏れの恐れのあるルートの未通過、橙の縁=要注意）
 //  ・線＝走行経路、大きな丸＝最新の現在地
 export default function PatrolMap({
-  rows, colorOf, focusKey, onPick, height = 440,
+  rows, colorOf, focusKey, onPick, onSpotClick, alertOverrides, activeSpotId, overlay, height = 440,
 }: {
   rows: PatrolRow[]            // 表示するルート（絞り込み済み）
   colorOf: Map<string, string> // ルートごとの色
   focusKey: string | null      // 「地図で見る」で選ばれたルート
-  onPick: (key: string) => void
+  onPick: (key: string) => void                       // 線・現在地を押したとき（そのルートの一覧へ）
+  onSpotClick: (spotId: string, key: string) => void  // スポットを押したとき（要注意の設定・メモ）
+  alertOverrides: Map<string, boolean>                // この画面で変更した要注意の状態（再読み込み前でも地図に反映）
+  activeSpotId: string | null
+  overlay?: React.ReactNode
   height?: number
 }) {
   const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY
@@ -31,6 +35,8 @@ export default function PatrolMap({
   const lastFitRef = useRef('')
   const onPickRef = useRef(onPick)
   onPickRef.current = onPick
+  const onSpotRef = useRef(onSpotClick)
+  onSpotRef.current = onSpotClick
   const [fullscreen, setFullscreen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,7 +50,8 @@ export default function PatrolMap({
     import('leaflet').then(L => {
       if (cancelled || !containerRef.current) return
       if (!mapRef.current) {
-        mapRef.current = L.map(containerRef.current, { preferCanvas: true }).setView([35.69, 139.69], 12)
+        mapRef.current = L.map(containerRef.current, { renderer: L.canvas({ tolerance: 8 }) }) // 点を指で押しやすいよう、押せる範囲を広げる
+          .setView([35.69, 139.69], 12)
         L.tileLayer(TILE_URL(apiKey), { attribution: ATTRIBUTION, maxZoom: 20 }).addTo(mapRef.current)
         layerRef.current = L.layerGroup().addTo(mapRef.current)
       }
@@ -59,16 +66,18 @@ export default function PatrolMap({
         const pts: [number, number][] = []
         const unvisitedColor = row.level === 'danger' ? '#E5484D' : '#9CA3AF'
 
-        for (const [lat, lng, unvisited, alert] of row.map.spots) {
+        for (const [lat, lng, unvisited, alertFlag, spotId] of row.map.spots) {
           pts.push([lat, lng])
+          const alert = alertOverrides.get(spotId) ?? !!alertFlag
+          const active = spotId === activeSpotId
           const m = L.circleMarker([lat, lng], {
-            radius: alert ? 6 : 4,
-            color: alert ? '#F59E0B' : '#fff',
-            weight: alert ? 2.5 : 1,
+            radius: active ? 10 : alert ? 7 : 6,
+            color: active ? '#1D4ED8' : alert ? '#F59E0B' : '#fff',
+            weight: active ? 3.5 : alert ? 3 : 1,
             fillColor: unvisited ? unvisitedColor : '#3EA96B',
             fillOpacity: 0.95,
           })
-          m.on('click', () => onPickRef.current(row.key))
+          m.on('click', () => onSpotRef.current(spotId, row.key))
           m.addTo(layerRef.current)
         }
 
@@ -100,7 +109,7 @@ export default function PatrolMap({
     }).catch(e => setError(e.message))
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, rows, focusKey, visibleSig])
+  }, [apiKey, rows, focusKey, visibleSig, alertOverrides, activeSpotId])
 
   useEffect(() => {
     document.body.style.overflow = fullscreen ? 'hidden' : ''
@@ -137,12 +146,13 @@ export default function PatrolMap({
       >
         {fullscreen ? '✕' : '⛶'}
       </button>
+      {overlay && <div style={{ position: 'absolute', left: 8, right: 8, top: 8, zIndex: 1002, maxWidth: 560 }}>{overlay}</div>}
       <div style={{
         position: 'absolute', left: 8, bottom: 22, zIndex: 1001, fontSize: 11, color: 'var(--text-2)',
         background: 'rgba(255,255,255,.88)', padding: '3px 8px', borderRadius: 6, lineHeight: 1.6,
       }}>
         <span style={{ color: '#3EA96B' }}>●</span> 通過済み　<span style={{ color: '#9CA3AF' }}>●</span> まだ　<span style={{ color: '#E5484D' }}>●</span> 周回漏れの恐れ
-        <span style={{ color: '#F59E0B' }}>◎</span> 要注意　━ 走行経路　⬤ 現在地
+        <span style={{ color: '#F59E0B' }}>◎</span> 要注意　━ 走行経路　⬤ 現在地　（点を押すと要注意の設定ができます）
       </div>
     </div>
   )

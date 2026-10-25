@@ -20,8 +20,8 @@ export type PatrolLevel = 'danger' | 'warn' | 'active' | 'ok' | 'idle'
 export type PatrolDriver = { id: string; name: string; phone: string | null; email: string | null; inspected: boolean }
 export type PatrolSpot = { id: string; routeId: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; note: string | null; acked: boolean }
 
-// 地図用の軽量データ。spots=[緯度, 経度, 通過済み(0)/未通過(1), 要注意(1)]、track=走行経路、last=最新の現在地
-export type PatrolMapData = { spots: [number, number, 0 | 1, 0 | 1][]; track: [number, number][]; last: [number, number] | null }
+// 地図用の軽量データ。spots=[緯度, 経度, 通過済み(0)/未通過(1), 要注意(1), スポットid]、track=走行経路、last=最新の現在地
+export type PatrolMapData = { spots: [number, number, 0 | 1, 0 | 1, string][]; track: [number, number][]; last: [number, number] | null }
 
 export type PatrolRow = {
   key: string
@@ -160,8 +160,8 @@ export async function loadPatrolStatus(date: string): Promise<PatrolStatusData> 
     ackedByReport.set(a.dailyReportId, set)
   }
 
-  // 巡回の対象になるルート＝この曜日に担当がいる、またはこの日の日報があるルート
-  const activeRoutes = routeList.filter(r => driversByRoute.has(r.id) || regularByRoute.has(r.id))
+  // 管理者はすべてのルートを見られるようにする（担当がいない日・日報がまだ無いルートも含める）
+  const activeRoutes = routeList
   const activeRouteIds = activeRoutes.map(r => r.id)
   const spotList = activeRouteIds.length ? await db.select().from(spots).where(inArray(spots.routeId, activeRouteIds)) : []
   const spotsByRoute = new Map<string, typeof spotList>()
@@ -209,7 +209,7 @@ export async function loadPatrolStatus(date: string): Promise<PatrolStatusData> 
         total: routeSpots.length, passed: passedIds.size, unvisitedCount: unvisitedAll.length,
         unvisited: [], alertSpots: [], lastPointAt: lastPoint, pointCount: pts.length, drivers, visitedIds: passedIds,
         map: {
-          spots: routeSpots.map(s => [r5(s.latitude), r5(s.longitude), passedIds.has(s.id) ? 0 : 1, s.isAlertSpot ? 1 : 0] as [number, number, 0 | 1, 0 | 1]),
+          spots: routeSpots.map(s => [r5(s.latitude), r5(s.longitude), passedIds.has(s.id) ? 0 : 1, s.isAlertSpot ? 1 : 0, s.id] as [number, number, 0 | 1, 0 | 1, string]),
           track: thinTrack(pts),
           last: pts.length ? [r5(pts[pts.length - 1].lat), r5(pts[pts.length - 1].lng)] : null,
         },
@@ -265,9 +265,9 @@ export async function loadPatrolStatus(date: string): Promise<PatrolStatusData> 
       row.reasons.push(isToday ? '担当ドライバーがいますが、まだGPSの記録が始まっていません' : '担当ドライバーがいましたが、この日の記録がありません')
     } else {
       row.level = 'idle'
-      row.statusText = '記録なし'
+      row.statusText = isToday ? '本日の担当なし' : '記録なし'
     }
-    if (row.level !== 'ok' && row.drivers.length === 0) row.reasons.push('この曜日の担当ドライバーが設定されていません')
+    if (row.level !== 'ok' && row.level !== 'idle' && row.drivers.length === 0) row.reasons.push('この曜日の担当ドライバーが設定されていません')
     rows.push(row)
   }
 
@@ -295,7 +295,7 @@ export async function loadPatrolStatus(date: string): Promise<PatrolStatusData> 
       map: {
         spots: visitedRows.filter(v => v.dailyReportId === r.id).flatMap(v => {
           const s = earlySpotById.get(v.spotId)
-          return s ? [[r5(s.latitude), r5(s.longitude), 0, 0] as [number, number, 0 | 1, 0 | 1]] : []
+          return s ? [[r5(s.latitude), r5(s.longitude), 0, 0, s.id] as [number, number, 0 | 1, 0 | 1, string]] : []
         }),
         track: thinTrack(pts),
         last: pts.length ? [r5(pts[pts.length - 1].lat), r5(pts[pts.length - 1].lng)] : null,

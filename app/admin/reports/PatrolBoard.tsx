@@ -50,7 +50,9 @@ function ContactButtons({ drivers, urgent, message }: { drivers: PatrolDriver[];
 }
 
 // スポット1件分の確認と、要注意の設定・メモ（備考）の編集
-function SpotLine({ spot, showAck }: { spot: PatrolSpot; showAck: boolean }) {
+function SpotLine({
+  spot, showAck, onAlertChange,
+}: { spot: PatrolSpot; showAck: boolean; onAlertChange?: (spotId: string, isAlert: boolean) => void }) {
   const [isAlert, setIsAlert] = useState(spot.isAlertSpot)
   const [note, setNote] = useState(spot.note ?? '')
   const [savedNote, setSavedNote] = useState(spot.note ?? '')
@@ -68,6 +70,7 @@ function SpotLine({ spot, showAck }: { spot: PatrolSpot; showAck: boolean }) {
       })
       if (!res.ok) throw new Error('failed')
       setIsAlert(a => !a)
+      onAlertChange?.(spot.id, !isAlert)
     } catch {
       setMessage('要注意の切り替えに失敗しました')
     } finally {
@@ -120,6 +123,52 @@ function SpotLine({ spot, showAck }: { spot: PatrolSpot; showAck: boolean }) {
         <button className="btn sm" disabled={busy || note.trim() === savedNote} onClick={saveNote}>保存</button>
       </div>
       {message && <div style={{ fontSize: 11.5, marginTop: 4, color: message.includes('失敗') ? 'var(--danger)' : 'var(--accent)' }}>{message}</div>}
+    </div>
+  )
+}
+
+// 地図でスポットを押したときに出す、要注意の設定・メモの編集カード
+type SpotDetail = {
+  id: string; routeId: string; orderInRoute: number; address: string | null
+  isAlertSpot: boolean; note: string | null; routeLabel: string
+}
+
+function SpotEditorOverlay({
+  spotId, onClose, onAlertChange, onGoList,
+}: { spotId: string; onClose: () => void; onAlertChange: (spotId: string, isAlert: boolean) => void; onGoList: () => void }) {
+  const [detail, setDetail] = useState<SpotDetail | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setDetail(null)
+    setError(null)
+    fetch(`/api/admin/spots/${spotId}`)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error('failed'))))
+      .then((d: SpotDetail) => { if (!cancelled) setDetail(d) })
+      .catch(() => { if (!cancelled) setError('スポットの情報を取得できませんでした') })
+    return () => { cancelled = true }
+  }, [spotId])
+
+  return (
+    <div className="card" style={{ marginBottom: 0, padding: 10, boxShadow: '0 2px 10px rgba(0,0,0,.3)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{detail?.routeLabel ?? 'スポット'}</span>
+        <span style={{ display: 'flex', gap: 6 }}>
+          <button className="btn sm" onClick={onGoList}>ルートの一覧へ</button>
+          <button className="btn sm" aria-label="閉じる" onClick={onClose}>✕</button>
+        </span>
+      </div>
+      {error && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 6 }}>{error}</div>}
+      {!detail && !error && <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 6 }}>読み込み中…</div>}
+      {detail && (
+        <SpotLine
+          key={detail.id}
+          spot={{ id: detail.id, routeId: detail.routeId, orderInRoute: detail.orderInRoute, address: detail.address, isAlertSpot: detail.isAlertSpot, note: detail.note, acked: false }}
+          showAck={false}
+          onAlertChange={onAlertChange}
+        />
+      )}
     </div>
   )
 }
@@ -236,6 +285,14 @@ export default function PatrolBoard({
       return next.size === rows.length ? null : next
     })
   }
+  // 地図で押したスポット（要注意の設定・メモ）と、この画面で変えた要注意の状態（地図の表示に反映）
+  const [activeSpot, setActiveSpot] = useState<{ id: string; key: string } | null>(null)
+  const [alertOverrides, setAlertOverrides] = useState<Map<string, boolean>>(new Map())
+  function onAlertChange(spotId: string, isAlert: boolean) {
+    setAlertOverrides(prev => new Map(prev).set(spotId, isAlert))
+    router.refresh() // 一覧の「要注意スポット」にも反映する
+  }
+
   function pick(key: string) {
     // 地図を見ている最中に表示範囲が動かないよう、地図は動かさず一覧だけ移動する
     setHighlightKey(key)
@@ -312,7 +369,23 @@ export default function PatrolBoard({
           </div>
 
           <div id="patrol-map" style={{ scrollMarginTop: 12 }}>
-            <PatrolMap rows={visibleRows} colorOf={colorOf} focusKey={focusKey} onPick={pick} />
+            <PatrolMap
+              rows={visibleRows}
+              colorOf={colorOf}
+              focusKey={focusKey}
+              onPick={pick}
+              onSpotClick={(id, key) => setActiveSpot({ id, key })}
+              alertOverrides={alertOverrides}
+              activeSpotId={activeSpot?.id ?? null}
+              overlay={activeSpot && (
+                <SpotEditorOverlay
+                  spotId={activeSpot.id}
+                  onClose={() => setActiveSpot(null)}
+                  onAlertChange={onAlertChange}
+                  onGoList={() => pick(activeSpot.key)}
+                />
+              )}
+            />
           </div>
         </>
       )}
