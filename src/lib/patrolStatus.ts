@@ -20,6 +20,9 @@ export type PatrolLevel = 'danger' | 'warn' | 'active' | 'ok' | 'idle'
 export type PatrolDriver = { id: string; name: string; phone: string | null; email: string | null; inspected: boolean }
 export type PatrolSpot = { id: string; routeId: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; note: string | null; acked: boolean }
 
+// 地図用の軽量データ。spots=[緯度, 経度, 通過済み(0)/未通過(1), 要注意(1)]、track=走行経路、last=最新の現在地
+export type PatrolMapData = { spots: [number, number, 0 | 1, 0 | 1][]; track: [number, number][]; last: [number, number] | null }
+
 export type PatrolRow = {
   key: string
   kind: 'regular' | 'early'
@@ -37,6 +40,7 @@ export type PatrolRow = {
   lastPointAt: string | null // ISO
   pointCount: number
   drivers: PatrolDriver[]
+  map: PatrolMapData
 }
 
 export type PatrolStatusData = {
@@ -56,6 +60,21 @@ function dayOfWeekOf(date: string) {
 function hhmm(iso: string | null) {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' })
+}
+
+const r5 = (n: number) => Math.round(n * 1e5) / 1e5
+
+// 走行経路を地図用に間引く（12m以上離れた点だけ残す。最後の点は必ず残す。最大1200点）
+function thinTrack(pts: { lat: number; lng: number }[]): [number, number][] {
+  const out: { lat: number; lng: number }[] = []
+  for (const p of pts) {
+    const last = out[out.length - 1]
+    if (!last || distanceMeters(last, p) >= 12) out.push(p)
+  }
+  const end = pts[pts.length - 1]
+  if (end && out[out.length - 1] !== end) out.push(end)
+  const step = Math.max(1, Math.ceil(out.length / 1200))
+  return out.filter((_, i) => i % step === 0 || i === out.length - 1).map(p => [r5(p.lat), r5(p.lng)] as [number, number])
 }
 
 // GPS点の格子（約45m四方）。判定距離（20m）より大きいので、スポットの周囲9マスだけ調べれば足りる
@@ -159,7 +178,7 @@ export async function loadPatrolStatus(date: string): Promise<PatrolStatusData> 
     return { id: u.id, name: u.name || u.email || '（名前なし）', phone: u.phoneNumber ?? null, email: u.email ?? null, inspected: inspectedKey.has(`${u.id}|${shift}`) }
   }
 
-  type Draft = Omit<PatrolRow, 'level' | 'statusText' | 'reasons'> & { visitedIds: Set<string> | null }
+  type Draft = Omit<PatrolRow, 'level' | 'statusText' | 'reasons' | 'map'> & { visitedIds: Set<string> | null; map: PatrolMapData }
   const rows: PatrolRow[] = []
 
   // ── 通常回収（ルートごと）
@@ -189,6 +208,11 @@ export async function loadPatrolStatus(date: string): Promise<PatrolStatusData> 
         reportId: report?.id ?? null, reportStatus: report?.status ?? null,
         total: routeSpots.length, passed: passedIds.size, unvisitedCount: unvisitedAll.length,
         unvisited: [], alertSpots: [], lastPointAt: lastPoint, pointCount: pts.length, drivers, visitedIds: passedIds,
+        map: {
+          spots: routeSpots.map(s => [r5(s.latitude), r5(s.longitude), passedIds.has(s.id) ? 0 : 1, s.isAlertSpot ? 1 : 0] as [number, number, 0 | 1, 0 | 1]),
+          track: thinTrack(pts),
+          last: pts.length ? [r5(pts[pts.length - 1].lat), r5(pts[pts.length - 1].lng)] : null,
+        },
       },
       unvisitedAll, alertAll,
     })
@@ -249,6 +273,9 @@ export async function loadPatrolStatus(date: string): Promise<PatrolStatusData> 
 
   // ── 早朝回収（ドライバーごと。ルートがないので、回ったスポット数だけ出す）
   const earlyIds = earlyReports.map(r => r.id)
+  const earlySpotIds = [...new Set((earlyIds.length ? await db.select().from(reportVisitedSpots).where(and(inArray(reportVisitedSpots.dailyReportId, earlyIds), eq(reportVisitedSpots.excluded, false))) : []).map(v => v.spotId))]
+  const earlySpotRows = earlySpotIds.length ? await db.select().from(spots).where(inArray(spots.id, earlySpotIds)) : []
+  const earlySpotById = new Map(earlySpotRows.map(s => [s.id, s]))
   const visitedRows = earlyIds.length
     ? await db.select().from(reportVisitedSpots).where(and(inArray(reportVisitedSpots.dailyReportId, earlyIds), eq(reportVisitedSpots.excluded, false)))
     : []
@@ -265,6 +292,14 @@ export async function loadPatrolStatus(date: string): Promise<PatrolStatusData> 
       reportId: r.id, reportStatus: r.status, level: 'active', statusText: '巡回中', reasons: [],
       total: 0, passed: visitedCount.get(r.id) ?? 0, unvisitedCount: 0, unvisited: [], alertSpots: [],
       lastPointAt: lastPoint, pointCount: pts.length, drivers: driver ? [driver] : [],
+      map: {
+        spots: visitedRows.filter(v => v.dailyReportId === r.id).flatMap(v => {
+          const s = earlySpotById.get(v.spotId)
+          return s ? [[r5(s.latitude), r5(s.longitude), 0, 0] as [number, number, 0 | 1, 0 | 1]] : []
+        }),
+        track: thinTrack(pts),
+        last: pts.length ? [r5(pts[pts.length - 1].lat), r5(pts[pts.length - 1].lng)] : null,
+      },
     }
     if (submitted) { row.level = 'ok'; row.statusText = r.status === 'approved' ? '完了（承認済み）' : '完了（提出済み）' }
     else if (!isToday) { row.level = 'warn'; row.statusText = '日報が未提出'; row.reasons.push('この日の日報が提出されていません') }

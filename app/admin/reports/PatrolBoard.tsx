@@ -1,8 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { PatrolDriver, PatrolRow, PatrolSpot, PatrolLevel } from '@/lib/patrolStatus'
+import PatrolMap from './PatrolMap'
+
+// ルートごとの色（地図の線・現在地・絞り込みのチップで共通）
+const ROUTE_COLORS = ['#4A7CF6', '#E5484D', '#8E4EC6', '#0E9AA7', '#D9730D', '#2F9E44', '#C2255C', '#5C7CFA', '#A16207', '#0B7285', '#E8590C', '#6741D9']
 
 const REFRESH_MS = 60_000
 
@@ -120,15 +124,21 @@ function SpotLine({ spot, showAck }: { spot: PatrolSpot; showAck: boolean }) {
   )
 }
 
-function RouteCard({ row, isToday }: { row: PatrolRow; isToday: boolean }) {
+function RouteCard({
+  row, isToday, color, highlight, onFocus,
+}: { row: PatrolRow; isToday: boolean; color: string; highlight: boolean; onFocus: () => void }) {
   const pct = row.total > 0 ? Math.round((row.passed / row.total) * 100) : 0
   const urgent = row.level === 'danger' || row.level === 'warn'
   const driverMessage = `${row.title} について確認です。${row.reasons.join(' ')}`
 
   return (
-    <div className="card" style={{ borderLeft: `4px solid ${LEVEL_BORDER[row.level]}`, marginBottom: 10 }}>
+    <div
+      id={`patrol-${row.key}`}
+      className="card"
+      style={{ borderLeft: `4px solid ${LEVEL_BORDER[row.level]}`, marginBottom: 10, boxShadow: highlight ? `0 0 0 2px ${color}` : undefined, scrollMarginTop: 12 }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ fontWeight: 700, fontSize: 14 }}>{row.title}</div>
+        <div style={{ fontWeight: 700, fontSize: 14 }}><span style={{ color }}>●</span> {row.title}</div>
         <span className={`pill ${LEVEL_PILL[row.level]}`}>{row.statusText}</span>
       </div>
 
@@ -160,6 +170,7 @@ function RouteCard({ row, isToday }: { row: PatrolRow; isToday: boolean }) {
       )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+        <button className="btn sm" onClick={onFocus}>🗺 地図で見る</button>
         {row.reportId && <a className="btn sm" href={`/admin/reports/${row.reportId}`}>日報・軌跡を見る</a>}
       </div>
 
@@ -206,6 +217,38 @@ export default function PatrolBoard({
 
   const count = (lv: PatrolLevel) => rows.filter(r => r.level === lv).length
 
+  // 表示するルートの絞り込み（null＝すべて）。色はルートの並び（名前順）で固定し、更新で入れ替わらないようにする
+  const [selected, setSelected] = useState<Set<string> | null>(null)
+  const [focusKey, setFocusKey] = useState<string | null>(null)          // 地図をそのルートに合わせる（「地図で見る」）
+  const [highlightKey, setHighlightKey] = useState<string | null>(null)  // 一覧で枠を付けるルート（地図の点を押したとき）
+  const colorOf = useMemo(() => {
+    const keys = [...rows].sort((a, b) => a.title.localeCompare(b.title, 'ja')).map(r => r.key)
+    return new Map(keys.map((k, i) => [k, ROUTE_COLORS[i % ROUTE_COLORS.length]]))
+  }, [rows])
+  const visibleRows = useMemo(() => (selected ? rows.filter(r => selected.has(r.key)) : rows), [rows, selected])
+  const chipRows = useMemo(() => [...rows].sort((a, b) => a.title.localeCompare(b.title, 'ja')), [rows])
+
+  function toggle(key: string) {
+    setFocusKey(null)
+    setSelected(prev => {
+      const next = new Set(prev ?? rows.map(r => r.key))
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next.size === rows.length ? null : next
+    })
+  }
+  function pick(key: string) {
+    // 地図を見ている最中に表示範囲が動かないよう、地図は動かさず一覧だけ移動する
+    setHighlightKey(key)
+    document.getElementById(`patrol-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  function focusOnMap(key: string) {
+    // 絞り込まれていないルートを地図で見たいときは、そのルートも表示に加える
+    setSelected(prev => (prev && !prev.has(key) ? new Set([...prev, key]) : prev))
+    setFocusKey(key)
+    setHighlightKey(key)
+    document.getElementById('patrol-map')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <>
       <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
@@ -231,7 +274,59 @@ export default function PatrolBoard({
       {rows.length === 0 && (
         <div className="card"><p style={{ fontSize: 13, color: 'var(--text-3)' }}>この日に巡回予定のルートも、日報もありません。</p></div>
       )}
-      {rows.map(row => <RouteCard key={row.key} row={row} isToday={isToday} />)}
+
+      {rows.length > 0 && (
+        <>
+          <div className="card">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+              <b style={{ fontSize: 13 }}>表示するルート</b>
+              <button className={`btn sm ${selected === null ? 'primary' : ''}`} onClick={() => { setSelected(null); setFocusKey(null) }}>すべて</button>
+              <button className="btn sm" onClick={() => { setSelected(new Set(rows.filter(r => r.level === 'danger' || r.level === 'warn').map(r => r.key))); setFocusKey(null) }}>⚠ 注意が必要なルートだけ</button>
+              <button className="btn sm" onClick={() => { setSelected(new Set(rows.filter(r => r.level === 'active').map(r => r.key))); setFocusKey(null) }}>巡回中だけ</button>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {chipRows.map(r => {
+                const on = selected === null || selected.has(r.key)
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => toggle(r.key)}
+                    style={{
+                      padding: '4px 10px', borderRadius: 14, fontSize: 12, cursor: 'pointer',
+                      border: `1.5px solid ${on ? colorOf.get(r.key) : 'var(--border)'}`,
+                      background: on ? 'var(--bg-2)' : 'transparent',
+                      color: on ? 'var(--text)' : 'var(--text-3)',
+                      opacity: on ? 1 : 0.6,
+                    }}
+                  >
+                    <span style={{ color: colorOf.get(r.key) }}>●</span> {r.title}
+                    {(r.level === 'danger' || r.level === 'warn') && <span style={{ color: r.level === 'danger' ? 'var(--danger)' : 'var(--warn)' }}> ⚠</span>}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 8 }}>
+              ルート名を押すと、地図と下の一覧の表示／非表示を切り替えられます。地図の点や線を押すと、そのルートの一覧へ移動します。
+            </div>
+          </div>
+
+          <div id="patrol-map" style={{ scrollMarginTop: 12 }}>
+            <PatrolMap rows={visibleRows} colorOf={colorOf} focusKey={focusKey} onPick={pick} />
+          </div>
+        </>
+      )}
+
+      {visibleRows.map(row => (
+        <RouteCard
+          key={row.key}
+          row={row}
+          isToday={isToday}
+          color={colorOf.get(row.key) ?? '#4A7CF6'}
+          highlight={highlightKey === row.key}
+          onFocus={() => focusOnMap(row.key)}
+        />
+      ))}
     </>
   )
 }
