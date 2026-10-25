@@ -1,7 +1,7 @@
 import { db } from '@/db/client'
 import {
   dailyReports, routes, areas, wasteTypePrices, feeRules,
-  monthlySummaries, monthlySummaryItems, paymentAllocations, users,
+  monthlySummaries, monthlySummaryItems, paymentAllocations, users, reportWasteWeights, wasteTypes,
 } from '@/db/schema'
 import { eq, and, or, inArray, desc, gte, lt, lte, isNull } from 'drizzle-orm'
 
@@ -60,22 +60,46 @@ export async function recalculateMonth(unionId: string, companyId: string, yearM
     lt(dailyReports.reportDate, nextMonth),
   ))
 
-  // 品目別に重量・金額を積み上げる（単価は日報ごとの実施日時点のものを使う）
+  // 日報ごとの収集物の内訳（古紙→新聞・雑誌・段ボール など）。内訳の行がある日報はそれを使い、
+  // 無い古い日報は従来どおり「日報の品目＋総重量」で集計する
+  const reportIds = reports.map(r => r.id)
+  const weightRows = reportIds.length
+    ? await db.select().from(reportWasteWeights).where(inArray(reportWasteWeights.dailyReportId, reportIds))
+    : []
+  const weightsByReport = new Map<string, { wasteTypeId: string; weightKg: number }[]>()
+  for (const w of weightRows) {
+    const list = weightsByReport.get(w.dailyReportId) ?? []
+    list.push({ wasteTypeId: w.wasteTypeId, weightKg: w.weightKg })
+    weightsByReport.set(w.dailyReportId, list)
+  }
+  const parentById = new Map((await db.select().from(wasteTypes).where(eq(wasteTypes.companyId, companyId))).map(w => [w.id, w.parentId]))
+
+  // 品目別に重量・金額を積み上げる（単価は日報ごとの実施日時点のものを使う。
+  // 内訳に単価が無ければ、その大分類の単価を使う）
   const byWasteType = new Map<string, { weight: number; amount: number }>()
   const priceCache = new Map<string, number | null>()
-  for (const r of reports) {
-    if (!r.wasteTypeId || r.totalWeightKg == null) continue
-    const cacheKey = `${r.wasteTypeId}:${r.reportDate}`
+  async function priceFor(wasteTypeId: string, date: string) {
+    const cacheKey = `${wasteTypeId}:${date}`
     let price = priceCache.get(cacheKey)
     if (price === undefined) {
-      price = await priceAsOf(r.wasteTypeId, r.reportDate)
+      price = await priceAsOf(wasteTypeId, date)
+      const parentId = parentById.get(wasteTypeId)
+      if (price == null && parentId) price = await priceAsOf(parentId, date)
       priceCache.set(cacheKey, price)
     }
-    if (price == null) continue // 単価未設定の品目は集計対象外
-    const entry = byWasteType.get(r.wasteTypeId) ?? { weight: 0, amount: 0 }
-    entry.weight += r.totalWeightKg
-    entry.amount += Math.round(r.totalWeightKg * price)
-    byWasteType.set(r.wasteTypeId, entry)
+    return price
+  }
+  for (const r of reports) {
+    const entries = weightsByReport.get(r.id)
+      ?? (r.wasteTypeId && r.totalWeightKg != null ? [{ wasteTypeId: r.wasteTypeId, weightKg: r.totalWeightKg }] : [])
+    for (const e of entries) {
+      const price = await priceFor(e.wasteTypeId, r.reportDate)
+      if (price == null) continue // 単価未設定の品目は集計対象外
+      const entry = byWasteType.get(e.wasteTypeId) ?? { weight: 0, amount: 0 }
+      entry.weight += e.weightKg
+      entry.amount += Math.round(e.weightKg * price)
+      byWasteType.set(e.wasteTypeId, entry)
+    }
   }
 
   const totalWeightKg = [...byWasteType.values()].reduce((s, v) => s + v.weight, 0)

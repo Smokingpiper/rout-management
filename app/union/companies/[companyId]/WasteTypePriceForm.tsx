@@ -14,11 +14,12 @@ export default function WasteTypePriceForm({
   companyId, wasteTypeOptions,
 }: {
   companyId: string
-  wasteTypeOptions: { id: string; name: string }[]
+  wasteTypeOptions: { id: string; name: string; isTop: boolean }[]
 }) {
   const router = useRouter()
   const [wasteTypeId, setWasteTypeId] = useState(wasteTypeOptions[0]?.id ?? NEW_WASTE_TYPE)
   const [newName, setNewName] = useState('')
+  const [newParent, setNewParent] = useState('')
   const [unitPrice, setUnitPrice] = useState('')
   const [effectiveFrom, setEffectiveFrom] = useState(todayStr())
   const [saving, setSaving] = useState(false)
@@ -43,9 +44,9 @@ export default function WasteTypePriceForm({
         const res = await fetch('/api/union/waste-types', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ companyId, name: newName.trim() }),
+          body: JSON.stringify({ companyId, name: newName.trim(), parentId: newParent || null }),
         })
-        if (!res.ok) throw new Error('failed')
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'failed')
         const created = await res.json()
         targetWasteTypeId = created.id
       }
@@ -58,8 +59,8 @@ export default function WasteTypePriceForm({
       setUnitPrice('')
       setNewName('')
       router.refresh()
-    } catch {
-      setError('保存に失敗しました')
+    } catch (e) {
+      setError(e instanceof Error && e.message !== 'failed' ? e.message : '保存に失敗しました')
     } finally {
       setSaving(false)
     }
@@ -67,19 +68,25 @@ export default function WasteTypePriceForm({
 
   return (
     <div className="card">
-      <div className="card-title">品目マスタ・単価を登録</div>
+      <div className="card-title">収集物の単価を登録</div>
       <div className="grid-cards" style={{ gridTemplateColumns: '1fr 1fr 1fr', marginBottom: 12 }}>
         <div className="field">
-          <label>品目</label>
+          <label>収集物（内訳があるものは内訳ごとに単価を設定）</label>
           <select className="text-input" style={{ width: '100%' }} value={wasteTypeId} onChange={e => setWasteTypeId(e.target.value)}>
             {wasteTypeOptions.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-            <option value={NEW_WASTE_TYPE}>＋ 新しい品目を追加</option>
+            <option value={NEW_WASTE_TYPE}>＋ 新しい収集物を追加</option>
           </select>
           {isNew && (
-            <input
-              className="text-input" style={{ width: '100%', marginTop: 6 }}
-              value={newName} onChange={e => setNewName(e.target.value)} placeholder="品目名（例：古紙）"
-            />
+            <>
+              <input
+                className="text-input" style={{ width: '100%', marginTop: 6 }}
+                value={newName} onChange={e => setNewName(e.target.value)} placeholder="名前（例：古紙 ／ 新聞）"
+              />
+              <select className="text-input" style={{ width: '100%', marginTop: 6 }} value={newParent} onChange={e => setNewParent(e.target.value)}>
+                <option value="">大分類として追加</option>
+                {wasteTypeOptions.filter(w => w.isTop).map(w => <option key={w.id} value={w.id}>「{w.name}」の内訳として追加</option>)}
+              </select>
+            </>
           )}
         </div>
         <div className="field">

@@ -7,8 +7,11 @@ import {
 } from '@/lib/inspection'
 import { Choice, RollCallCard, formatTime } from '@/components/RollCallCard'
 
+type VehicleOption = { id: string; plateNumber: string; name: string | null }
+
 type Initial = {
   vehicleNumber: string
+  vehicleId: string
   checks: Checks
   startRollCall: RollCall | null
   nearMissNote: string
@@ -17,9 +20,11 @@ type Initial = {
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
 export default function InspectionForm({
-  today, shiftType, nextHref, driverName, initial,
-}: { today: string; shiftType: ShiftType; nextHref: string | null; driverName: string; initial: Initial }) {
+  today, shiftType, nextHref, driverName, initial, vehicles,
+}: { today: string; shiftType: ShiftType; nextHref: string | null; driverName: string; initial: Initial; vehicles: VehicleOption[] }) {
   const [vehicleNumber, setVehicleNumber] = useState(initial.vehicleNumber)
+  const [vehicleId, setVehicleId] = useState(initial.vehicleId)
+  const useMaster = vehicles.length > 0 // 車両マスタが未登録のときは、従来どおりナンバーを手入力する
   const [checks, setChecks] = useState<Checks>(initial.checks)
   const [startRollCall, setStartRollCall] = useState<RollCall>(initial.startRollCall ?? emptyRollCall())
   const [nearMissNote, setNearMissNote] = useState(initial.nearMissNote)
@@ -58,6 +63,7 @@ export default function InspectionForm({
         body: JSON.stringify({
           shiftType,
           vehicleNumber,
+          vehicleId: useMaster ? vehicleId || null : null,
           checks,
           // 終業点呼は日報の提出時に入力する（ここでは送らない＝サーバー側の既存の記録を保つ）
           startRollCall: isUntouchedRollCall(startRollCall) ? null : startRollCall,
@@ -102,12 +108,14 @@ export default function InspectionForm({
     const t = setTimeout(save, 1200)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vehicleNumber, checks, startRollCall, nearMissNote])
+  }, [vehicleNumber, vehicleId, checks, startRollCall, nearMissNote])
 
   const answered = ALL_CHECK_ITEMS.filter(i => checks[i.key]?.result).length
   const ngCount = ALL_CHECK_ITEMS.filter(i => checks[i.key]?.result === 'ng').length
-  const startReady = answered === ALL_CHECK_ITEMS.length && isRollCallAnswered(startRollCall)
+  const vehicleChosen = useMaster ? !!vehicleId : true
+  const startReady = answered === ALL_CHECK_ITEMS.length && isRollCallAnswered(startRollCall) && vehicleChosen
   const missing: string[] = []
+  if (!vehicleChosen) missing.push('使用する車両')
   if (answered < ALL_CHECK_ITEMS.length) missing.push(`点検項目（あと${ALL_CHECK_ITEMS.length - answered}項目）`)
   if (!isRollCallAnswered(startRollCall)) missing.push('始業点呼')
 
@@ -125,14 +133,31 @@ export default function InspectionForm({
           <div style={{ fontSize: 15, fontWeight: 600 }}>{driverName}</div>
         </div>
         <div className="field">
-          <label>車両番号</label>
-          <input
-            className="text-input"
-            style={{ width: '100%' }}
-            value={vehicleNumber}
-            onChange={e => { setVehicleNumber(e.target.value); touch() }}
-            placeholder="例：品川 800 あ 1234"
-          />
+          <label>使用する車両{useMaster && '（必須）'}</label>
+          {useMaster ? (
+            <select
+              className="text-input"
+              style={{ width: '100%' }}
+              value={vehicleId}
+              onChange={e => {
+                const v = vehicles.find(x => x.id === e.target.value)
+                setVehicleId(e.target.value)
+                setVehicleNumber(v?.plateNumber ?? '')
+                touch()
+              }}
+            >
+              <option value="">車両を選んでください</option>
+              {vehicles.map(v => <option key={v.id} value={v.id}>{v.plateNumber}{v.name ? `（${v.name}）` : ''}</option>)}
+            </select>
+          ) : (
+            <input
+              className="text-input"
+              style={{ width: '100%' }}
+              value={vehicleNumber}
+              onChange={e => { setVehicleNumber(e.target.value); touch() }}
+              placeholder="例：品川 800 あ 1234"
+            />
+          )}
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label>区分（通常回収と早朝回収は別々に記録します）</label>

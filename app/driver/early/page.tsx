@@ -1,11 +1,12 @@
 import { db } from '@/db/client'
-import { reportVisitedSpots, routeTrackPoints } from '@/db/schema'
+import { reportVisitedSpots, routeTrackPoints, wasteTypes } from '@/db/schema'
 import { and, eq, sql } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { isInspectionReady } from '@/lib/inspectionGate'
 import { getOrCreateEarlyReport } from '@/lib/earlyReport'
 import { loadVisitedSpots, type EarlyIncident } from '@/lib/reportData'
+import { topLevelTypes } from '@/lib/wasteTypes'
 import EarlyScreen from './EarlyScreen'
 
 export const dynamic = 'force-dynamic'
@@ -31,9 +32,12 @@ export default async function EarlyPage({ searchParams }: { searchParams: Promis
     .from(routeTrackPoints)
     .where(eq(routeTrackPoints.dailyReportId, report.id))
 
+  const companyWasteTypes = user.companyId ? await db.select().from(wasteTypes).where(eq(wasteTypes.companyId, user.companyId)) : []
+
   return (
     <EarlyScreen
-      report={{ id: report.id, status: report.status, reportDate: report.reportDate }}
+      report={{ id: report.id, status: report.status, reportDate: report.reportDate, wasteTypeId: report.wasteTypeId }}
+      wasteTypeOptions={topLevelTypes(companyWasteTypes).map(w => ({ id: w.id, name: w.name }))}
       initialVisited={visited.map(v => ({ ...v, visitedAt: v.visitedAt.toISOString() }))}
       initialExcludedIds={excluded.map(e => e.spotId)}
       initialIncidents={(report.incidentLog ?? []) as EarlyIncident[]}

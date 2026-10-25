@@ -8,13 +8,14 @@ import { useRouteLine } from '@/lib/useRouteLine'
 import { useIsApplePlatform, navUrl } from '@/lib/mapNav'
 import { distanceMeters, MISSED_SPOT_THRESHOLD_M } from '@/lib/missedSpots'
 import { unlockSpotSound, playSpotSound, isSpotSoundUnlocked } from '@/lib/spotSound'
+import WasteTypePicker from '@/components/WasteTypePicker'
 import DriverSpotList from './DriverSpotList'
 
 type Spot = { id: string; orderInRoute: number; address: string | null; isAlertSpot: boolean; latitude: number; longitude: number; hasNote?: boolean }
-type Report = { id: string; status: string; reportDate: string }
+type Report = { id: string; status: string; reportDate: string; wasteTypeId: string | null }
 
 export default function RunScreen({
-  routeId, routeName, report, spots, ackedSpotIds, initialVisitedSpotIds, trackPointCount, wasteTypeName, autoStartRecording = false,
+  routeId, routeName, report, spots, ackedSpotIds, initialVisitedSpotIds, trackPointCount, wasteTypeName, wasteTypeOptions, autoStartRecording = false,
 }: {
   routeId: string
   routeName: string
@@ -24,6 +25,7 @@ export default function RunScreen({
   initialVisitedSpotIds: string[]
   trackPointCount: number
   wasteTypeName: string | null
+  wasteTypeOptions: { id: string; name: string }[]
   autoStartRecording?: boolean
 }) {
   const reportOpen = report.status === 'in_progress'
@@ -91,6 +93,8 @@ export default function RunScreen({
       <div className="breadcrumb">ドライバー向け</div>
       <div className="page-title">{routeName}</div>
       <div className="page-desc">{report.reportDate} ・ {wasteTypeName ?? '品目未設定'}</div>
+
+      <WasteTypePicker reportId={report.id} options={wasteTypeOptions} initialId={report.wasteTypeId} disabled={!reportOpen} />
 
       {reportOpen ? (
         <div className="card">

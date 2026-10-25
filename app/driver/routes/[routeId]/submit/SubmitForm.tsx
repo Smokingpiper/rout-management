@@ -3,15 +3,30 @@
 import { useState } from 'react'
 import { emptyRollCall, isRollCallAnswered, type RollCall } from '@/lib/inspection'
 import { RollCallCard } from '@/components/RollCallCard'
+import { topLevelTypes, weightTargets } from '@/lib/wasteTypes'
 
-type WasteType = { id: string; name: string }
+type WasteType = { id: string; name: string; parentId: string | null }
+type InitialWeight = { wasteTypeId: string; weightKg: number }
 type Report = { id: string; wasteTypeId: string | null; totalWeightKg: number | null; memo: string | null; status: string }
 
 export default function SubmitForm({
-  report, wasteTypeList, spotCount, early = false, initialEndRollCall = null,
-}: { routeId?: string; report: Report; wasteTypeList: WasteType[]; spotCount: number; early?: boolean; initialEndRollCall?: RollCall | null }) {
+  report, wasteTypeList, spotCount, early = false, initialEndRollCall = null, initialWeights = [],
+}: {
+  routeId?: string; report: Report; wasteTypeList: WasteType[]; spotCount: number; early?: boolean
+  initialEndRollCall?: RollCall | null; initialWeights?: InitialWeight[]
+}) {
   const [endRollCall, setEndRollCall] = useState<RollCall>(initialEndRollCall ?? emptyRollCall())
-  const [wasteTypeId, setWasteTypeId] = useState(report.wasteTypeId ?? '')
+  // 収集物は大分類（古紙・ビン・缶…）を選ぶ。内訳がある大分類は、内訳ごとの重さを入力する
+  const initialCategory = (() => {
+    const w = wasteTypeList.find(x => x.id === report.wasteTypeId)
+    return w?.parentId ?? w?.id ?? ''
+  })()
+  const [wasteTypeId, setWasteTypeId] = useState(initialCategory)
+  const [weights, setWeights] = useState<Record<string, string>>(() => Object.fromEntries(initialWeights.map(w => [w.wasteTypeId, String(w.weightKg)])))
+  const categories = topLevelTypes(wasteTypeList)
+  const targets = wasteTypeId ? weightTargets(wasteTypeList, wasteTypeId) : []
+  const hasBreakdown = targets.length > 0 && targets[0].id !== wasteTypeId // 内訳ごとに入力するか
+  const breakdownTotal = targets.reduce((s, t) => s + (Number(weights[t.id]) || 0), 0)
   const [weight, setWeight] = useState(report.totalWeightKg?.toString() ?? '')
   const [memo, setMemo] = useState(report.memo ?? '')
   const [submitting, setSubmitting] = useState(false)
@@ -39,8 +54,10 @@ export default function SubmitForm({
   }
 
   async function submit() {
-    if (!weight) {
-      setError('総重量を入力してください')
+    // 収集物を選んでいれば内訳（または大分類自体）の重さ、未選択なら従来どおり総重量だけを送る
+    const weightRows = wasteTypeId ? targets.map(t => ({ wasteTypeId: t.id, weightKg: Number(weights[t.id]) || 0 })).filter(r => r.weightKg > 0) : null
+    if (weightRows ? weightRows.length === 0 : !weight) {
+      setError(hasBreakdown ? '内訳ごとの重さを1つ以上入力してください' : '総重量を入力してください')
       return
     }
     if (!isRollCallAnswered(endRollCall)) {
@@ -62,7 +79,7 @@ export default function SubmitForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           wasteTypeId: wasteTypeId || null,
-          totalWeightKg: Number(weight),
+          ...(weightRows ? { weights: weightRows } : { totalWeightKg: Number(weight) }),
           memo,
           submit: true,
         }),
@@ -95,17 +112,36 @@ export default function SubmitForm({
         </div>
       </div>
       <div className="field">
-        <label>{early ? 'ゴミ種別' : 'ゴミ種別（本日のルート全体で1種類）'}</label>
+        <label>{early ? '収集物' : '収集物（本日のルート全体で1種類）'}</label>
         <select value={wasteTypeId} onChange={e => setWasteTypeId(e.target.value)}>
           <option value="">未設定</option>
-          {wasteTypeList.map(wt => <option key={wt.id} value={wt.id}>{wt.name}</option>)}
+          {categories.map(wt => <option key={wt.id} value={wt.id}>{wt.name}</option>)}
         </select>
       </div>
-      <div className="field">
-        <label>総重量（kg）必須</label>
-        <input type="number" step="0.1" value={weight} onChange={e => setWeight(e.target.value)} placeholder="例：142.5" />
-        <div className="hint">ごみ収集車の計量器に表示された値をそのまま入力する</div>
-      </div>
+      {wasteTypeId && hasBreakdown ? (
+        <div className="field">
+          <label>内訳ごとの重さ（kg）合計 {breakdownTotal.toLocaleString(undefined, { maximumFractionDigits: 1 })}kg</label>
+          {targets.map(t => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <span style={{ width: 90, fontSize: 14 }}>{t.name}</span>
+              <input type="number" inputMode="decimal" step="0.1" min="0" style={{ flex: 1 }} value={weights[t.id] ?? ''} onChange={e => setWeights(w => ({ ...w, [t.id]: e.target.value }))} placeholder="0" />
+            </div>
+          ))}
+          <div className="hint">計量器の値を、種類ごとに分けて入力する。入力した分の合計が日報の総重量になります</div>
+        </div>
+      ) : wasteTypeId ? (
+        <div className="field">
+          <label>総重量（kg）必須</label>
+          <input type="number" inputMode="decimal" step="0.1" min="0" value={weights[wasteTypeId] ?? ''} onChange={e => setWeights(w => ({ ...w, [wasteTypeId]: e.target.value }))} placeholder="例：142.5" />
+          <div className="hint">ごみ収集車の計量器に表示された値をそのまま入力する</div>
+        </div>
+      ) : (
+        <div className="field">
+          <label>総重量（kg）必須</label>
+          <input type="number" step="0.1" value={weight} onChange={e => setWeight(e.target.value)} placeholder="例：142.5" />
+          <div className="hint">収集物を選ぶと、内訳ごとに入力できる場合があります</div>
+        </div>
+      )}
       <div className="field">
         <label>日報の写真</label>
         <input type="file" accept="image/*" capture="environment" onChange={e => e.target.files?.[0] && uploadPhoto('report', e.target.files[0])} />

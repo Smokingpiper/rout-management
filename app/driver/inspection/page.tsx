@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { dailyInspections } from '@/db/schema'
+import { dailyInspections, vehicles } from '@/db/schema'
 import { and, desc, eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
@@ -35,6 +35,16 @@ export default async function InspectionPage({ searchParams }: { searchParams: P
     ? [null]
     : await db.select().from(dailyInspections).where(eq(dailyInspections.userId, user.id)).orderBy(desc(dailyInspections.inspectionDate)).limit(1)
 
+  // 使う車両は、車両マスタ（使用停止していないもの）から選ぶ。今日すでに選んだ車両は停止中でも残す
+  const companyVehicles = user.companyId
+    ? await db.select().from(vehicles).where(eq(vehicles.companyId, user.companyId))
+    : []
+  const selectedVehicleId = record?.vehicleId ?? last?.vehicleId ?? ''
+  const vehicleOptions = companyVehicles
+    .filter(v => v.active || v.id === selectedVehicleId)
+    .sort((a, b) => a.plateNumber.localeCompare(b.plateNumber, 'ja'))
+    .map(v => ({ id: v.id, plateNumber: v.plateNumber, name: v.name }))
+
   return (
     <>
       <div className="breadcrumb">ドライバー向け</div>
@@ -47,8 +57,10 @@ export default async function InspectionPage({ searchParams }: { searchParams: P
         shiftType={shiftType}
         nextHref={nextHref}
         driverName={user.name || user.email || ''}
+        vehicles={vehicleOptions}
         initial={{
           vehicleNumber: record?.vehicleNumber ?? last?.vehicleNumber ?? '',
+          vehicleId: selectedVehicleId,
           checks: (record?.checks ?? {}) as Checks,
           startRollCall: (record?.startRollCall ?? null) as RollCall | null,
           nearMissNote: record?.nearMissNote ?? '',

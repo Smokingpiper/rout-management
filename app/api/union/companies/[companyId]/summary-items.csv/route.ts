@@ -1,6 +1,7 @@
 import { db } from '@/db/client'
 import { companies, monthlySummaryItems, wasteTypes } from '@/db/schema'
 import { eq, desc } from 'drizzle-orm'
+import { wasteTypeLabel } from '@/lib/wasteTypes'
 
 export async function GET(request: Request, { params }: { params: Promise<{ companyId: string }> }) {
   const { companyId } = await params
@@ -11,17 +12,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ comp
     yearMonth: monthlySummaryItems.yearMonth,
     totalWeightKg: monthlySummaryItems.totalWeightKg,
     totalAmount: monthlySummaryItems.totalAmount,
-    wasteTypeName: wasteTypes.name,
+    wasteTypeId: monthlySummaryItems.wasteTypeId,
   })
     .from(monthlySummaryItems)
-    .innerJoin(wasteTypes, eq(monthlySummaryItems.wasteTypeId, wasteTypes.id))
     .where(eq(monthlySummaryItems.companyId, companyId))
     .orderBy(desc(monthlySummaryItems.yearMonth))
 
+  const typeById = new Map((await db.select().from(wasteTypes).where(eq(wasteTypes.companyId, companyId))).map(w => [w.id, w]))
   const header = ['year_month', 'waste_type', 'total_weight_kg', 'total_amount']
   const lines = [header.join(',')]
   for (const r of rows) {
-    lines.push([r.yearMonth, `"${r.wasteTypeName.replace(/"/g, '""')}"`, r.totalWeightKg, r.totalAmount].join(','))
+    lines.push([r.yearMonth, `"${wasteTypeLabel(r.wasteTypeId, typeById).replace(/"/g, '""')}"`, r.totalWeightKg, r.totalAmount].join(','))
   }
   const csv = '﻿' + lines.join('\r\n')
 

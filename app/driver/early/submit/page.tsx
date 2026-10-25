@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { wasteTypes } from '@/db/schema'
+import { wasteTypes, reportWasteWeights } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
@@ -25,6 +25,8 @@ export default async function EarlySubmitPage() {
     ? await db.select().from(wasteTypes).where(eq(wasteTypes.companyId, user.companyId))
     : []
 
+  const savedWeights = await db.select().from(reportWasteWeights).where(eq(reportWasteWeights.dailyReportId, report.id))
+
   return (
     <>
       <div className="breadcrumb"><a href="/driver/early">早朝回収</a> / 日報提出</div>
@@ -40,6 +42,7 @@ export default async function EarlySubmitPage() {
       <SubmitForm
         report={report}
         wasteTypeList={wasteTypeList}
+        initialWeights={savedWeights.map(w => ({ wasteTypeId: w.wasteTypeId, weightKg: w.weightKg }))}
         spotCount={visited.length}
         early
         initialEndRollCall={await loadTodaysEndRollCall(user.id, 'early')}

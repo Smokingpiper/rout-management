@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { filterSpotsForDriver } from '@/lib/driverSpots'
 import { requireInspectionForPatrol } from '@/lib/inspectionGate'
 import { findMissedSpots } from '@/lib/missedSpots'
+import { topLevelTypes } from '@/lib/wasteTypes'
 import RunScreen from './RunScreen'
 
 export const dynamic = 'force-dynamic'
@@ -60,6 +61,9 @@ export default async function DriverRoutePage({
   const missedIds = new Set(findMissedSpots(spotList, trackPoints).map(s => s.id))
   const visitedSpotIds = spotList.filter(s => !missedIds.has(s.id)).map(s => s.id)
 
+  // 収集物（大分類）の選択肢は、そのルートの会社のもの
+  const companyWasteTypes = area ? await db.select().from(wasteTypes).where(eq(wasteTypes.companyId, area.companyId)) : []
+
   const wasteType = report.wasteTypeId
     ? (await db.select().from(wasteTypes).where(eq(wasteTypes.id, report.wasteTypeId)))[0]
     : null
@@ -74,6 +78,7 @@ export default async function DriverRoutePage({
       initialVisitedSpotIds={visitedSpotIds}
       trackPointCount={trackPointCount}
       wasteTypeName={wasteType?.name ?? null}
+      wasteTypeOptions={topLevelTypes(companyWasteTypes).map(w => ({ id: w.id, name: w.name }))}
       autoStartRecording={start === '1'}
     />
   )

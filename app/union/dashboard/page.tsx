@@ -1,4 +1,5 @@
 import { db } from '@/db/client'
+import { wasteTypeLabel } from '@/lib/wasteTypes'
 import { companies, monthlySummaries, monthlySummaryItems, wasteTypes, paymentAllocations } from '@/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { getPrimaryUnion } from '@/lib/union'
@@ -15,7 +16,8 @@ export default async function UnionDashboardPage() {
   const allSummaries = await db.select().from(monthlySummaries).orderBy(desc(monthlySummaries.yearMonth))
   const allItems = await db.select().from(monthlySummaryItems)
   const allWasteTypes = await db.select().from(wasteTypes)
-  const wasteTypeNameById = new Map(allWasteTypes.map(w => [w.id, w.name]))
+  const wasteTypeById = new Map(allWasteTypes.map(w => [w.id, w]))
+  const wasteTypeNameById = new Map(allWasteTypes.map(w => [w.id, wasteTypeLabel(w.id, wasteTypeById)]))
   const allAllocations = await db.select().from(paymentAllocations)
 
   const latestYearMonth = allSummaries[0]?.yearMonth ?? null

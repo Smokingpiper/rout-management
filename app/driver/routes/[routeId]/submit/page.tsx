@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { routes, areas, wasteTypes, spots, routeTrackPoints, missedSpotOverrides } from '@/db/schema'
+import { routes, areas, wasteTypes, spots, routeTrackPoints, missedSpotOverrides, reportWasteWeights } from '@/db/schema'
 import { eq, asc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { getOrCreateTodaysReport } from '@/lib/daily-report'
@@ -25,6 +25,7 @@ export default async function SubmitPage({ params }: { params: Promise<{ routeId
   const spotList = user ? await filterSpotsForDriver(allSpots, user.id) : allSpots
   const trackPoints = await db.select().from(routeTrackPoints).where(eq(routeTrackPoints.dailyReportId, report.id)).orderBy(asc(routeTrackPoints.recordedAt))
   const overrides = await db.select().from(missedSpotOverrides).where(eq(missedSpotOverrides.dailyReportId, report.id))
+  const savedWeights = await db.select().from(reportWasteWeights).where(eq(reportWasteWeights.dailyReportId, report.id))
 
   return (
     <>
@@ -43,6 +44,7 @@ export default async function SubmitPage({ params }: { params: Promise<{ routeId
         routeId={routeId}
         report={report}
         wasteTypeList={wasteTypeList}
+        initialWeights={savedWeights.map(w => ({ wasteTypeId: w.wasteTypeId, weightKg: w.weightKg }))}
         spotCount={spotList.length}
         initialEndRollCall={await loadTodaysEndRollCall(user?.id, 'normal')}
       />

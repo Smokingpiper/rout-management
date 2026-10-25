@@ -6,6 +6,7 @@ import { useGpsTracking } from '@/lib/useGpsTracking'
 import { useGpsRecordingToggle } from '@/lib/gpsRecordingToggle'
 import { distanceMeters, MISSED_SPOT_THRESHOLD_M } from '@/lib/missedSpots'
 import { unlockSpotSound, playSpotSound, isSpotSoundUnlocked } from '@/lib/spotSound'
+import WasteTypePicker from '@/components/WasteTypePicker'
 
 type VisitedSpot = { id: string; address: string | null; latitude: number; longitude: number; source: string; visitedAt: string }
 type NearbySpot = { id: string; address: string | null; latitude: number; longitude: number }
@@ -18,9 +19,10 @@ function nowHHMM() {
 }
 
 export default function EarlyScreen({
-  report, initialVisited, initialExcludedIds, initialIncidents, trackPointCount, autoStart,
+  report, initialVisited, initialExcludedIds, initialIncidents, trackPointCount, autoStart, wasteTypeOptions,
 }: {
-  report: { id: string; status: string; reportDate: string }
+  report: { id: string; status: string; reportDate: string; wasteTypeId: string | null }
+  wasteTypeOptions: { id: string; name: string }[]
   initialVisited: VisitedSpot[]
   initialExcludedIds: string[]
   initialIncidents: Incident[]
@@ -173,6 +175,8 @@ export default function EarlyScreen({
       {!reportOpen && (
         <div className="card"><span className="pill ok">この日の早朝回収の日報は提出済みです</span></div>
       )}
+
+      <WasteTypePicker reportId={report.id} options={wasteTypeOptions} initialId={report.wasteTypeId} disabled={!reportOpen} />
 
       {reportOpen && (
         <div className="card">

@@ -20,6 +20,8 @@ const NAV_GROUPS = [
       { href: '/admin/reports', label: '日報一覧・承認' },
       { href: '/admin/inspections', label: '点検記録' },
       { href: '/admin/users', label: 'ユーザー管理' },
+      { href: '/admin/waste-types', label: '収集物マスタ' },
+      { href: '/admin/vehicles', label: '車両マスタ' },
     ],
   },
   {

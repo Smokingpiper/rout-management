@@ -1,5 +1,5 @@
 import { db } from '@/db/client'
-import { dailyInspections } from '@/db/schema'
+import { dailyInspections, vehicles } from '@/db/schema'
 import { and, eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth'
 import { todayStr } from '@/lib/date'
@@ -28,6 +28,7 @@ export async function PUT(request: Request) {
   const body = await request.json() as {
     shiftType?: string
     vehicleNumber?: string
+    vehicleId?: string | null
     checks?: unknown
     startRollCall?: unknown
     endRollCall?: unknown
@@ -43,9 +44,21 @@ export async function PUT(request: Request) {
     eq(dailyInspections.shiftType, shiftType),
   ))
 
+  // 車両マスタから選んだ場合は、ナンバーをマスタの値で控える（クライアントの値は信用しない）
+  let vehicleId: string | null = null
+  let vehicleNumber = (body.vehicleNumber ?? '').trim().slice(0, 50) || null
+  if (body.vehicleId) {
+    const [v] = await db.select().from(vehicles).where(eq(vehicles.id, body.vehicleId))
+    if (v && (!user.companyId || v.companyId === user.companyId)) {
+      vehicleId = v.id
+      vehicleNumber = v.plateNumber
+    }
+  }
+
   const values = {
     shiftType,
-    vehicleNumber: (body.vehicleNumber ?? '').trim().slice(0, 50) || null,
+    vehicleId,
+    vehicleNumber,
     checks: cleanChecks(body.checks),
     startRollCall: cleanRollCall(body.startRollCall, (existing?.startRollCall ?? null) as RollCall | null),
     // 終業点呼は日報の提出時に別のAPIで保存する。ここで送られてこない場合は既存の記録を保つ

@@ -10,7 +10,7 @@ import PhotoViewer from '@/components/PhotoViewer'
 import { getCurrentUser } from '@/lib/auth'
 import { filterSpotsForDriver } from '@/lib/driverSpots'
 import { stampsFor } from '@/lib/reportStamps'
-import { loadInspectionForReport, loadStampUsers, loadVisitedSpots, type EarlyIncident } from '@/lib/reportData'
+import { loadInspectionForReport, loadStampUsers, loadVisitedSpots, loadWeightBreakdown, type EarlyIncident } from '@/lib/reportData'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +28,7 @@ export default async function DriverReportDetailPage({ params }: { params: Promi
   const isEarly = report.collectionType === 'early'
   const [route] = report.routeId ? await db.select().from(routes).where(eq(routes.id, report.routeId)) : [null]
   const [area] = route ? await db.select().from(areas).where(eq(areas.id, route.areaId)) : [null]
+  const breakdown = (await loadWeightBreakdown([report.id])).get(report.id) ?? []
   const wasteType = report.wasteTypeId ? (await db.select().from(wasteTypes).where(eq(wasteTypes.id, report.wasteTypeId)))[0] : null
 
   const allSpots = report.routeId ? await db.select().from(spots).where(eq(spots.routeId, report.routeId)) : []
@@ -67,6 +68,9 @@ export default async function DriverReportDetailPage({ params }: { params: Promi
         <table>
           <tbody>
             <tr><td style={{ color: 'var(--text-3)', width: 140 }}>総重量</td><td>{report.totalWeightKg != null ? `${report.totalWeightKg}kg` : '未入力'}</td></tr>
+            {breakdown.length > 0 && (
+              <tr><td style={{ color: 'var(--text-3)' }}>収集物の内訳</td><td>{breakdown.map(b => `${b.name} ${b.weightKg}kg`).join('　／　')}</td></tr>
+            )}
             <tr><td style={{ color: 'var(--text-3)' }}>メモ</td><td>{report.memo || '—'}</td></tr>
             {isEarly ? (
               <tr><td style={{ color: 'var(--text-3)' }}>回ったスポット</td><td>{visited.length}件</td></tr>

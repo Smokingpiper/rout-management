@@ -4,7 +4,7 @@ import { and, asc, eq, gte, inArray, lte, max, min } from 'drizzle-orm'
 import PrintableReport, { type PrintableData } from '@/components/PrintableReport'
 import PrintButton from './PrintButton'
 import { queryReportList, type ReportFilters } from '@/lib/reportQuery'
-import { loadStampUsers, inspectionShiftFor, type EarlyIncident } from '@/lib/reportData'
+import { loadStampUsers, inspectionShiftFor, loadWeightBreakdown, type EarlyIncident } from '@/lib/reportData'
 import { stampsFor } from '@/lib/reportStamps'
 import { getPrimaryCompany } from '@/lib/company'
 
@@ -48,6 +48,7 @@ export default async function PrintReportsPage({
   const stampUsers = await loadStampUsers(reportList)
 
   const reportIds = reportList.map(r => r.id)
+  const breakdownByReport = await loadWeightBreakdown(reportIds)
   const submitterIds = [...new Set(reportList.map(r => r.submittedBy).filter((x): x is string => !!x))]
   const dates = reportList.map(r => r.reportDate).sort()
 
@@ -106,6 +107,7 @@ export default async function PrintReportsPage({
       routeLabel: isEarly ? '早朝回収' : `${area?.name ?? ''} — ${route?.name ?? ''}`,
       wasteTypeName: r.wasteTypeId ? (wasteTypeById.get(r.wasteTypeId)?.name ?? '') : '',
       totalWeightKg: r.totalWeightKg,
+      weights: (breakdownByReport.get(r.id) ?? []).map(b => ({ name: b.name, weightKg: b.weightKg })),
       memo: r.memo ?? '',
       statusLabel: STATUS_LABEL[r.status] ?? r.status,
       startTime: hhmm(b?.first),

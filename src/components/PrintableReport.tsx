@@ -12,6 +12,7 @@ export type PrintableData = {
   routeLabel: string          // 例: 阿佐谷南 — 阿佐谷南1 / 早朝回収
   wasteTypeName: string
   totalWeightKg: number | null
+  weights: { name: string; weightKg: number }[]  // 収集物の内訳（無ければ空）
   memo: string
   statusLabel: string
   startTime: string | null    // GPS記録の最初の時刻（HH:MM）
@@ -93,7 +94,10 @@ export default function PrintableReport({ data }: { data: PrintableData }) {
           </tr>
           <tr>
             <th>{data.isEarly ? '区分' : 'エリア・ルート'}</th><td>{data.routeLabel}</td>
-            <th>品目・総重量</th><td>{data.wasteTypeName}　{data.totalWeightKg != null ? `${data.totalWeightKg} kg` : ''}</td>
+            <th>品目・総重量</th><td>
+              {data.wasteTypeName}　{data.totalWeightKg != null ? `${data.totalWeightKg} kg` : ''}
+              {data.weights.length > 0 && <div style={{ fontSize: 10.5 }}>（{data.weights.map(w => `${w.name} ${w.weightKg}kg`).join('、')}）</div>}
+            </td>
           </tr>
         </tbody>
       </table>

@@ -1,5 +1,5 @@
 import {
-  pgTable, text, timestamp, integer, boolean, doublePrecision, jsonb, date, pgEnum,
+  pgTable, text, timestamp, integer, boolean, doublePrecision, jsonb, date, pgEnum, uniqueIndex, type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 
 export const routeScheduleStatusEnum = pgEnum('route_schedule_status', ['pending', 'in_progress', 'done'])
@@ -34,11 +34,25 @@ export const areas = pgTable('areas', {
   name:      text('name').notNull(),
 })
 
-// ── ゴミ種類マスタ ───────────────────────────────────────
+// ── ゴミ種類（収集物）マスタ ─────────────────────────────────
+// parentId が null＝大分類（古紙・ビン・缶など。ルートの既定や日報の収集物として選ぶ）。
+// parentId がある＝内訳（古紙の中の新聞・雑誌・段ボールなど）。内訳がある大分類は、日報に内訳ごとの重さを書く。
+// 単価は、内訳があれば内訳ごと、なければ大分類に設定する
 export const wasteTypes = pgTable('waste_types', {
   id:        id(),
   companyId: text('company_id').notNull().references(() => companies.id),
   name:      text('name').notNull(),
+  parentId:  text('parent_id').references((): AnyPgColumn => wasteTypes.id),
+})
+
+// ── 車両マスタ ────────────────────────────────────────
+export const vehicles = pgTable('vehicles', {
+  id:          id(),
+  companyId:   text('company_id').notNull().references(() => companies.id),
+  plateNumber: text('plate_number').notNull(), // ナンバープレート（例：品川 800 あ 1234）
+  name:        text('name'),                   // 呼び名（例：2tパッカー車）
+  active:      boolean('active').notNull().default(true),
+  createdAt:   timestamp('created_at').defaultNow().notNull(),
 })
 
 // ── 単価改定履歴 ────────────────────────────────────────
@@ -135,6 +149,17 @@ export const dailyReports = pgTable('daily_reports', {
   // 早朝回収の「持ち去り車両」記録: [{ vehicleNumber, company, time }]
   incidentLog:      jsonb('incident_log').notNull().default('[]'),
 })
+
+// ── 日報の収集物ごとの重さ（内訳） ───────────────────────────
+// 大分類に内訳がある場合は内訳ごとに1行（古紙→新聞/雑誌/段ボール）、内訳がない場合は大分類自体で1行。
+// 日報の総重量（daily_reports.total_weight_kg）は、この合計と一致させる。
+// この行が無い古い日報は、従来どおり daily_reports の waste_type_id と総重量で集計する
+export const reportWasteWeights = pgTable('report_waste_weights', {
+  id:            id(),
+  dailyReportId: text('daily_report_id').notNull().references(() => dailyReports.id),
+  wasteTypeId:   text('waste_type_id').notNull().references(() => wasteTypes.id),
+  weightKg:      doublePrecision('weight_kg').notNull(),
+}, t => [uniqueIndex('report_waste_weights_unique').on(t.dailyReportId, t.wasteTypeId)])
 
 // ── 早朝回収で回ったスポット ─────────────────────────────
 // GPS通過で自動追加（source=gps）またはドライバーが手動追加（source=manual）。
@@ -276,7 +301,8 @@ export const dailyInspections = pgTable('daily_inspections', {
   userId:         text('user_id').notNull().references(() => users.id),
   inspectionDate: date('inspection_date').notNull(),
   shiftType:      text('shift_type').notNull().default('normal'),
-  vehicleNumber:  text('vehicle_number'),
+  vehicleNumber:  text('vehicle_number'), // ナンバー（マスタから選んだ時点の値を控えとして残す）
+  vehicleId:      text('vehicle_id').references(() => vehicles.id),
   checks:         jsonb('checks').notNull().default('{}'),
   startRollCall:  jsonb('start_roll_call'),
   endRollCall:    jsonb('end_roll_call'),

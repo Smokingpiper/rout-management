@@ -4,6 +4,7 @@ import { eq, desc, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { getPrimaryUnion } from '@/lib/union'
 import FeeRuleForm from './FeeRuleForm'
+import { orderedTree, wasteTypeLabel } from '@/lib/wasteTypes'
 import WasteTypePriceForm from './WasteTypePriceForm'
 import RecalculateButton from './RecalculateButton'
 import BarChart from '@/components/BarChart'
@@ -41,7 +42,9 @@ export default async function CompanyAllocationPage({ params }: { params: Promis
     ? await db.select().from(monthlySummaryItems).where(eq(monthlySummaryItems.yearMonth, latestYearMonth))
       .then(rows => rows.filter(r => r.companyId === companyId))
     : []
-  const wasteTypeNameById = new Map(companyWasteTypes.map(w => [w.id, w.name]))
+  const wasteTypeById = new Map(companyWasteTypes.map(w => [w.id, w]))
+  const wasteTypeNameById = new Map(companyWasteTypes.map(w => [w.id, wasteTypeLabel(w.id, wasteTypeById)]))
+  const wasteTypeTree = orderedTree(companyWasteTypes)
 
   return (
     <>
@@ -75,16 +78,19 @@ export default async function CompanyAllocationPage({ params }: { params: Promis
       {union && <FeeRuleForm unionId={union.id} companyId={company.id} />}
 
       <div className="card">
-        <div className="card-title">品目マスタ・単価設定</div>
+        <div className="card-title">
+          収集物マスタ・単価設定
+          <a className="btn sm" href="/admin/waste-types">収集物マスタを編集</a>
+        </div>
         {companyWasteTypes.length > 0 ? (
           <table>
             <thead><tr><th>品目</th><th>現在の単価</th><th>適用開始日</th></tr></thead>
             <tbody>
-              {companyWasteTypes.map(w => {
+              {wasteTypeTree.map(({ item: w, depth }) => {
                 const price = currentPriceByWasteType.get(w.id)
                 return (
                   <tr key={w.id}>
-                    <td>{w.name}</td>
+                    <td style={{ paddingLeft: depth ? 24 : undefined }}>{depth ? '└ ' : ''}{w.name}</td>
                     <td>{price ? `¥${price.unitPrice.toLocaleString()} / kg` : <span style={{ color: 'var(--text-3)' }}>未設定</span>}</td>
                     <td style={{ color: 'var(--text-3)', fontSize: 12.5 }}>{price?.effectiveFrom ?? '—'}</td>
                   </tr>
@@ -97,7 +103,10 @@ export default async function CompanyAllocationPage({ params }: { params: Promis
         )}
       </div>
 
-      <WasteTypePriceForm companyId={company.id} wasteTypeOptions={companyWasteTypes.map(w => ({ id: w.id, name: w.name }))} />
+      <WasteTypePriceForm
+        companyId={company.id}
+        wasteTypeOptions={wasteTypeTree.map(({ item, depth }) => ({ id: item.id, name: `${depth ? '　└ ' : ''}${item.name}`, isTop: depth === 0 }))}
+      />
 
       <div className="card">
         <div className="card-title">

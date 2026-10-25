@@ -1,5 +1,6 @@
 import { db } from '@/db/client'
-import { dailyInspections, reportVisitedSpots, spots, users } from '@/db/schema'
+import { dailyInspections, reportVisitedSpots, reportWasteWeights, spots, users, wasteTypes } from '@/db/schema'
+import { wasteTypeLabel } from './wasteTypes'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { stampUserIds, type ReportStampSource } from './reportStamps'
 
@@ -23,6 +24,23 @@ export async function loadInspectionForReport(report: ReportLike & { submittedBy
     eq(dailyInspections.shiftType, inspectionShiftFor(report)),
   ))
   return inspection ?? null
+}
+
+// 日報ごとの収集物の内訳（新聞◯kg・雑誌◯kg…）。内訳が無い古い日報は空
+export type WeightBreakdownRow = { wasteTypeId: string; name: string; weightKg: number }
+export async function loadWeightBreakdown(reportIds: string[]): Promise<Map<string, WeightBreakdownRow[]>> {
+  const result = new Map<string, WeightBreakdownRow[]>()
+  if (reportIds.length === 0) return result
+  const rows = await db.select().from(reportWasteWeights).where(inArray(reportWasteWeights.dailyReportId, reportIds))
+  if (rows.length === 0) return result
+  const byId = new Map((await db.select().from(wasteTypes)).map(w => [w.id, w]))
+  for (const r of rows) {
+    const list = result.get(r.dailyReportId) ?? []
+    list.push({ wasteTypeId: r.wasteTypeId, name: wasteTypeLabel(r.wasteTypeId, byId) || '（不明）', weightKg: r.weightKg })
+    result.set(r.dailyReportId, list)
+  }
+  for (const list of result.values()) list.sort((a, b) => a.name.localeCompare(b.name, 'ja'))
+  return result
 }
 
 // 早朝回収で回ったスポット（外されたものを除く）を回った順に
