@@ -3,7 +3,7 @@ import { wasteTypes } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { isInspectionReady } from '@/lib/inspectionGate'
+import { isInspectionReady, loadTodaysEndRollCall } from '@/lib/inspectionGate'
 import { getOrCreateEarlyReport } from '@/lib/earlyReport'
 import { loadVisitedSpots, type EarlyIncident } from '@/lib/reportData'
 import EarlyVisitedPanel from '@/components/EarlyVisitedPanel'
@@ -42,6 +42,7 @@ export default async function EarlySubmitPage() {
         wasteTypeList={wasteTypeList}
         spotCount={visited.length}
         early
+        initialEndRollCall={await loadTodaysEndRollCall(user.id, 'early')}
       />
     </>
   )

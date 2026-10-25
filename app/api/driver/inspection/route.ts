@@ -3,7 +3,7 @@ import { dailyInspections } from '@/db/schema'
 import { and, eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth'
 import { todayStr } from '@/lib/date'
-import { VALID_CHECK_KEYS, SHIFT_TYPES, isRollCallAnswered, type Checks, type RollCall } from '@/lib/inspection'
+import { VALID_CHECK_KEYS, SHIFT_TYPES, cleanRollCall, type Checks, type RollCall } from '@/lib/inspection'
 
 const VALID_SHIFTS = new Set<string>(SHIFT_TYPES.map(s => s.value))
 
@@ -19,27 +19,6 @@ function cleanChecks(raw: unknown): Checks {
     }
   }
   return out
-}
-
-function tri(v: unknown): boolean | null {
-  return v === true ? true : v === false ? false : null
-}
-
-// 記録時刻(at)はクライアントを信用せずサーバー側で付与する。点呼の4項目がすべて
-// 回答された最初の保存時刻を点呼の実施時刻とみなし、以後は上書きしない
-function cleanRollCall(raw: unknown, previous: RollCall | null): RollCall | null {
-  if (!raw || typeof raw !== 'object') return null
-  const r = raw as Record<string, any>
-  const rollCall: RollCall = {
-    caller: typeof r.caller === 'string' ? r.caller.trim().slice(0, 100) : '',
-    faceToFace: tri(r.faceToFace),
-    alcoholDeviceUsed: tri(r.alcoholDeviceUsed),
-    drunk: tri(r.drunk),
-    unwell: tri(r.unwell),
-    note: typeof r.note === 'string' ? r.note.slice(0, 1000) : '',
-  }
-  const at = previous?.at ?? (isRollCallAnswered(rollCall) ? new Date().toISOString() : undefined)
-  return at ? { ...rollCall, at } : rollCall
 }
 
 export async function PUT(request: Request) {
@@ -69,7 +48,10 @@ export async function PUT(request: Request) {
     vehicleNumber: (body.vehicleNumber ?? '').trim().slice(0, 50) || null,
     checks: cleanChecks(body.checks),
     startRollCall: cleanRollCall(body.startRollCall, (existing?.startRollCall ?? null) as RollCall | null),
-    endRollCall: cleanRollCall(body.endRollCall, (existing?.endRollCall ?? null) as RollCall | null),
+    // 終業点呼は日報の提出時に別のAPIで保存する。ここで送られてこない場合は既存の記録を保つ
+    endRollCall: body.endRollCall === undefined
+      ? ((existing?.endRollCall ?? null) as RollCall | null)
+      : cleanRollCall(body.endRollCall, (existing?.endRollCall ?? null) as RollCall | null),
     nearMissNote: (body.nearMissNote ?? '').trim().slice(0, 2000) || null,
     updatedAt: new Date(),
   }

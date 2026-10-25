@@ -70,6 +70,10 @@ export function emptyRollCall(): RollCall {
   return { caller: '', faceToFace: null, alcoholDeviceUsed: null, drunk: null, unwell: null, note: '' }
 }
 
+export function isUntouchedRollCall(rc: RollCall) {
+  return !rc.caller && !rc.note && rc.faceToFace === null && rc.alcoholDeviceUsed === null && rc.drunk === null && rc.unwell === null
+}
+
 export function isRollCallAnswered(rc: RollCall | null | undefined): boolean {
   return !!rc && rc.faceToFace !== null && rc.alcoholDeviceUsed !== null && rc.drunk !== null && rc.unwell !== null
 }
@@ -104,3 +108,25 @@ export function summarizeInspection(input: { checks: unknown; startRollCall: unk
     alerts: [...rollCallAlerts(startRollCall), ...rollCallAlerts(endRollCall)],
   }
 }
+
+function tri(v: unknown): boolean | null {
+  return v === true ? true : v === false ? false : null
+}
+
+// 記録時刻(at)はクライアントを信用せずサーバー側で付与する。点呼の4項目がすべて
+// 回答された最初の保存時刻を点呼の実施時刻とみなし、以後は上書きしない
+export function cleanRollCall(raw: unknown, previous: RollCall | null): RollCall | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, any>
+  const rollCall: RollCall = {
+    caller: typeof r.caller === 'string' ? r.caller.trim().slice(0, 100) : '',
+    faceToFace: tri(r.faceToFace),
+    alcoholDeviceUsed: tri(r.alcoholDeviceUsed),
+    drunk: tri(r.drunk),
+    unwell: tri(r.unwell),
+    note: typeof r.note === 'string' ? r.note.slice(0, 1000) : '',
+  }
+  const at = previous?.at ?? (isRollCallAnswered(rollCall) ? new Date().toISOString() : undefined)
+  return at ? { ...rollCall, at } : rollCall
+}
+

@@ -1,13 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import { emptyRollCall, isRollCallAnswered, type RollCall } from '@/lib/inspection'
+import { RollCallCard } from '@/components/RollCallCard'
 
 type WasteType = { id: string; name: string }
 type Report = { id: string; wasteTypeId: string | null; totalWeightKg: number | null; memo: string | null; status: string }
 
 export default function SubmitForm({
-  report, wasteTypeList, spotCount, early = false,
-}: { routeId?: string; report: Report; wasteTypeList: WasteType[]; spotCount: number; early?: boolean }) {
+  report, wasteTypeList, spotCount, early = false, initialEndRollCall = null,
+}: { routeId?: string; report: Report; wasteTypeList: WasteType[]; spotCount: number; early?: boolean; initialEndRollCall?: RollCall | null }) {
+  const [endRollCall, setEndRollCall] = useState<RollCall>(initialEndRollCall ?? emptyRollCall())
   const [wasteTypeId, setWasteTypeId] = useState(report.wasteTypeId ?? '')
   const [weight, setWeight] = useState(report.totalWeightKg?.toString() ?? '')
   const [memo, setMemo] = useState(report.memo ?? '')
@@ -40,9 +43,20 @@ export default function SubmitForm({
       setError('総重量を入力してください')
       return
     }
+    if (!isRollCallAnswered(endRollCall)) {
+      setError('終業点呼の4項目（対面・検知器・酒気帯び・体調）をすべて入力してください')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
+      // 終業点呼を先に保存する（日報の提出は、点呼の記録が残ってから）
+      const callRes = await fetch('/api/driver/inspection/end', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shiftType: early ? 'early' : 'normal', endRollCall }),
+      })
+      if (!callRes.ok) throw new Error('failed')
       const res = await fetch(`/api/driver/daily-reports/${report.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -106,6 +120,7 @@ export default function SubmitForm({
         <label>メモ</label>
         <textarea rows={2} value={memo} onChange={e => setMemo(e.target.value)} placeholder="特記事項など" />
       </div>
+      <RollCallCard title="終業点呼" scheduleHint="作業終了後に実施（必須）" value={endRollCall} onChange={setEndRollCall} />
       {error && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
       <button className="btn primary" disabled={submitting} onClick={submit}>
         {submitting ? '送信中…' : '日報を提出する'}

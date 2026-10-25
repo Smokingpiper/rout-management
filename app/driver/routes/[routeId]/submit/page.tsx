@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { getOrCreateTodaysReport } from '@/lib/daily-report'
 import { getCurrentUser } from '@/lib/auth'
 import { filterSpotsForDriver } from '@/lib/driverSpots'
+import { loadTodaysEndRollCall } from '@/lib/inspectionGate'
 import ReportTrackPanel from '@/components/ReportTrackPanel'
 import SubmitForm from './SubmitForm'
 
@@ -43,6 +44,7 @@ export default async function SubmitPage({ params }: { params: Promise<{ routeId
         report={report}
         wasteTypeList={wasteTypeList}
         spotCount={spotList.length}
+        initialEndRollCall={await loadTodaysEndRollCall(user?.id, 'normal')}
       />
     </>
   )

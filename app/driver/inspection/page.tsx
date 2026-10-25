@@ -39,7 +39,7 @@ export default async function InspectionPage({ searchParams }: { searchParams: P
     <>
       <div className="breadcrumb">ドライバー向け</div>
       <div className="page-title">作業前点検</div>
-      <div className="page-desc">日常点検・点呼表のデジタル版です。入力内容は自動で保存されます。通常回収と早朝回収は別々に記録します。</div>
+      <div className="page-desc">日常点検・点呼表のデジタル版です。入力内容は自動で保存されます。通常回収と早朝回収は別々に記録します。終業点呼は、作業後の日報提出画面で入力します。</div>
 
       <InspectionForm
         key={shiftType}
@@ -51,7 +51,6 @@ export default async function InspectionPage({ searchParams }: { searchParams: P
           vehicleNumber: record?.vehicleNumber ?? last?.vehicleNumber ?? '',
           checks: (record?.checks ?? {}) as Checks,
           startRollCall: (record?.startRollCall ?? null) as RollCall | null,
-          endRollCall: (record?.endRollCall ?? null) as RollCall | null,
           nearMissNote: record?.nearMissNote ?? '',
         }}
       />

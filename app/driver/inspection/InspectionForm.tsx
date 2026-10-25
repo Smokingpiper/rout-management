@@ -2,125 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  CHECK_GROUPS, ALL_CHECK_ITEMS, SHIFT_TYPES, emptyRollCall, isRollCallAnswered, rollCallAlerts,
+  CHECK_GROUPS, ALL_CHECK_ITEMS, SHIFT_TYPES, emptyRollCall, isRollCallAnswered, isUntouchedRollCall,
   type Checks, type CheckResult, type RollCall, type ShiftType,
 } from '@/lib/inspection'
+import { Choice, RollCallCard, formatTime } from '@/components/RollCallCard'
 
 type Initial = {
   vehicleNumber: string
   checks: Checks
   startRollCall: RollCall | null
-  endRollCall: RollCall | null
   nearMissNote: string
 }
 
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
-
-function isUntouched(rc: RollCall) {
-  return !rc.caller && !rc.note && rc.faceToFace === null && rc.alcoholDeviceUsed === null && rc.drunk === null && rc.unwell === null
-}
-
-function formatTime(iso?: string) {
-  if (!iso) return null
-  return new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' })
-}
-
-const TONE = {
-  ok: { bg: 'var(--accent)', fg: '#fff', border: 'var(--accent)' },
-  ng: { bg: 'var(--danger)', fg: '#fff', border: 'var(--danger)' },
-  neutral: { bg: 'var(--accent-2)', fg: '#fff', border: 'var(--accent-2)' },
-} as const
-
-function Choice({
-  label, selected, tone, onClick,
-}: { label: string; selected: boolean; tone: keyof typeof TONE; onClick: () => void }) {
-  const t = TONE[tone]
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        minWidth: 56, minHeight: 40, padding: '0 14px', borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: 'pointer',
-        border: `1.5px solid ${selected ? t.border : 'var(--border)'}`,
-        background: selected ? t.bg : 'var(--bg-2)',
-        color: selected ? t.fg : 'var(--text-2)',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-// 「有／無」「使用／不使用」のような2択。bad側を選ぶと赤で表示して異常が目に入るようにする
-function TriRow({
-  label, value, yesLabel, noLabel, yesIsBad, noIsBad, onChange,
-}: {
-  label: string
-  value: boolean | null
-  yesLabel: string
-  noLabel: string
-  yesIsBad?: boolean
-  noIsBad?: boolean
-  onChange: (v: boolean) => void
-}) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ fontSize: 14 }}>{label}</span>
-      <span style={{ display: 'flex', gap: 8 }}>
-        <Choice label={yesLabel} selected={value === true} tone={yesIsBad ? 'ng' : 'ok'} onClick={() => onChange(true)} />
-        <Choice label={noLabel} selected={value === false} tone={noIsBad ? 'ng' : 'ok'} onClick={() => onChange(false)} />
-      </span>
-    </div>
-  )
-}
-
-function RollCallCard({
-  title, scheduleHint, value, onChange,
-}: { title: string; scheduleHint: string; value: RollCall; onChange: (rc: RollCall) => void }) {
-  const set = (patch: Partial<RollCall>) => onChange({ ...value, ...patch })
-  const alerts = rollCallAlerts(value)
-  const answered = isRollCallAnswered(value)
-  return (
-    <div className="card">
-      <div className="card-title">
-        {title}
-        <span className={`pill ${answered ? 'ok' : 'muted'}`}>
-          {answered ? `記録済${formatTime(value.at) ? ` ${formatTime(value.at)}` : ''}` : scheduleHint}
-        </span>
-      </div>
-
-      <div className="field">
-        <label>点呼者</label>
-        <input className="text-input" value={value.caller} onChange={e => set({ caller: e.target.value })} placeholder="点呼を行った人の名前" />
-      </div>
-
-      <TriRow label="点呼（対面）" value={value.faceToFace} yesLabel="有" noLabel="無" noIsBad onChange={v => set({ faceToFace: v })} />
-      <TriRow label="アルコール検知器" value={value.alcoholDeviceUsed} yesLabel="使用" noLabel="不使用" noIsBad onChange={v => set({ alcoholDeviceUsed: v })} />
-      <TriRow label="酒気帯び" value={value.drunk} yesLabel="有" noLabel="無" yesIsBad onChange={v => set({ drunk: v })} />
-      <TriRow label="疾病・疲労・睡眠不足 など" value={value.unwell} yesLabel="有" noLabel="無" yesIsBad onChange={v => set({ unwell: v })} />
-
-      <button
-        type="button"
-        className="btn sm"
-        style={{ marginTop: 10, width: '100%' }}
-        onClick={() => set({ faceToFace: true, alcoholDeviceUsed: true, drunk: false, unwell: false })}
-      >
-        ✓ 問題なし（対面あり・検知器使用・酒気帯びなし・体調不良なし）をまとめて入力
-      </button>
-
-      {alerts.length > 0 && (
-        <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--danger)', fontWeight: 600 }}>
-          ⚠️ {alerts.join('・')}（会社管理者が記録を確認できます。必要なら連絡事項に状況を書いてください）
-        </div>
-      )}
-
-      <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
-        <label>連絡事項</label>
-        <textarea className="text-input" rows={2} style={{ width: '100%' }} value={value.note} onChange={e => set({ note: e.target.value })} />
-      </div>
-    </div>
-  )
-}
 
 export default function InspectionForm({
   today, shiftType, nextHref, driverName, initial,
@@ -128,7 +22,6 @@ export default function InspectionForm({
   const [vehicleNumber, setVehicleNumber] = useState(initial.vehicleNumber)
   const [checks, setChecks] = useState<Checks>(initial.checks)
   const [startRollCall, setStartRollCall] = useState<RollCall>(initial.startRollCall ?? emptyRollCall())
-  const [endRollCall, setEndRollCall] = useState<RollCall>(initial.endRollCall ?? emptyRollCall())
   const [nearMissNote, setNearMissNote] = useState(initial.nearMissNote)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [savedAt, setSavedAt] = useState<string | null>(null)
@@ -166,16 +59,15 @@ export default function InspectionForm({
           shiftType,
           vehicleNumber,
           checks,
-          startRollCall: isUntouched(startRollCall) ? null : startRollCall,
-          endRollCall: isUntouched(endRollCall) ? null : endRollCall,
+          // 終業点呼は日報の提出時に入力する（ここでは送らない＝サーバー側の既存の記録を保つ）
+          startRollCall: isUntouchedRollCall(startRollCall) ? null : startRollCall,
           nearMissNote,
         }),
       })
       if (!res.ok) throw new Error('save failed')
-      const json = await res.json() as { updatedAt: string; startRollCall: RollCall | null; endRollCall: RollCall | null }
+      const json = await res.json() as { updatedAt: string; startRollCall: RollCall | null }
       // 点呼の記録時刻（サーバー付与）だけを反映する。入力途中の内容を上書きしないため他の項目は触らない
       setStartRollCall(prev => (json.startRollCall?.at ? { ...prev, at: json.startRollCall.at } : prev))
-      setEndRollCall(prev => (json.endRollCall?.at ? { ...prev, at: json.endRollCall.at } : prev))
       dirty.current = false
       setSavedAt(formatTime(json.updatedAt))
       setSaveState('saved')
@@ -210,7 +102,7 @@ export default function InspectionForm({
     const t = setTimeout(save, 1200)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vehicleNumber, checks, startRollCall, endRollCall, nearMissNote])
+  }, [vehicleNumber, checks, startRollCall, nearMissNote])
 
   const answered = ALL_CHECK_ITEMS.filter(i => checks[i.key]?.result).length
   const ngCount = ALL_CHECK_ITEMS.filter(i => checks[i.key]?.result === 'ng').length
@@ -302,7 +194,9 @@ export default function InspectionForm({
       })}
 
       <RollCallCard title="始業点呼" scheduleHint="作業開始前に実施" value={startRollCall} onChange={rc => { setStartRollCall(rc); touch() }} />
-      <RollCallCard title="終業点呼" scheduleHint="作業終了後に実施" value={endRollCall} onChange={rc => { setEndRollCall(rc); touch() }} />
+      <div className="card" style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
+        終業点呼は、作業が終わったあとの<b>日報の提出画面</b>で入力します。
+      </div>
 
       <div className="card">
         <div className="card-title">ヒヤリハット共有</div>
