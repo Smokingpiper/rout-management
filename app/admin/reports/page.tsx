@@ -1,6 +1,9 @@
 import { db } from '@/db/client'
 import { wasteTypes } from '@/db/schema'
 import { queryReportList, type ReportFilters } from '@/lib/reportQuery'
+import { loadPatrolStatus } from '@/lib/patrolStatus'
+import { todayStr } from '@/lib/date'
+import PatrolBoard from './PatrolBoard'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,12 +18,39 @@ const STATUS_CLASS: Record<string, string> = {
   approved: 'ok',
 }
 
+function ReportTabs({ active }: { active: 'list' | 'status' }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+      <a className={`btn ${active === 'list' ? 'primary' : ''}`} href="/admin/reports">📋 日報一覧</a>
+      <a className={`btn ${active === 'status' ? 'primary' : ''}`} href="/admin/reports?view=status">🚚 巡回状況</a>
+    </div>
+  )
+}
+
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; from?: string; to?: string; status?: string; type?: string }>
+  searchParams: Promise<{ q?: string; from?: string; to?: string; status?: string; type?: string; view?: string; date?: string }>
 }) {
   const sp = await searchParams
+
+  // 巡回状況：その日のすべてのルートの進み具合と、周回漏れの恐れ・連絡先
+  if (sp.view === 'status') {
+    const date = /^d{4}-d{2}-d{2}$/.test(sp.date ?? '') ? sp.date! : todayStr()
+    const data = await loadPatrolStatus(date)
+    return (
+      <>
+        <div className="breadcrumb">会社管理者向け</div>
+        <div className="page-title">日報一覧・承認</div>
+        <ReportTabs active="status" />
+        <div className="page-desc">
+          {date} のすべてのルートの巡回状況です。周回漏れの恐れや、GPS記録の途絶があるルートが上に出ます。担当ドライバーへ、ここから電話・メールで連絡できます。
+          要注意スポットの設定とメモも、この画面から変更できます。
+        </div>
+        <PatrolBoard date={data.date} isToday={data.isToday} generatedAt={data.generatedAt} rows={data.rows} />
+      </>
+    )
+  }
   const filters: ReportFilters = {
     q: (sp.q ?? '').trim(),
     from: (sp.from ?? '').trim(),
@@ -42,6 +72,7 @@ export default async function ReportsPage({
     <>
       <div className="breadcrumb">会社管理者向け</div>
       <div className="page-title">日報一覧・承認</div>
+      <ReportTabs active="list" />
       <div className="page-desc">ドライバーが提出した日報を確認・承認します。総重量・種別は1日1件、軌跡は詳細画面で確認できます。</div>
 
       <form method="get" className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>

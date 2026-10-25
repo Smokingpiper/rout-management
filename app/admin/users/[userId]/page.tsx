@@ -6,6 +6,7 @@ import { formatRoles } from '@/lib/roleLabel'
 import { getLoginStatuses, LOGIN_STATE_LABEL, LOGIN_STATE_HINT, LOGIN_STATE_PILL } from '@/lib/loginStatus'
 import UserRolesForm from './UserRolesForm'
 import ResetPasswordCard from './ResetPasswordCard'
+import ContactCard from './ContactCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +56,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           </p>
         )}
       </div>
+
+      <ContactCard userId={userId} initialPhone={user.phoneNumber} />
 
       <ResetPasswordCard userId={userId} userLabel={user.name || user.email || 'このユーザー'} />
 
