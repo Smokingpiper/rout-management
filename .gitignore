@@ -8,3 +8,7 @@ node_modules/
 .vercel
 .env*
 tsconfig.tsbuildinfo
+
+# Claude Code — 個人用設定（シークレットが含まれる可能性あり）
+.claude/settings.local.json
+.claude/settings.json
